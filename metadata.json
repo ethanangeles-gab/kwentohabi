@@ -1,0 +1,6 @@
+{
+  "name": "KwentoHabi - AI Collaborative Writing & Continuity Engine",
+  "description": "An AI-powered classroom writing platform for Filipino students that checks narrative continuity, resolves cross-author contradictions, and maintains a safe, teacher-controlled story space.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

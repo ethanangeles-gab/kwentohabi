@@ -1,0 +1,102 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
+    --font-serif: 'Source Serif 4', Georgia, serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+
+    /* Philippine traditional weaving inspired palette */
+    --color-habi-indigo: #1e3a8a;
+    --color-habi-terracotta: #c2410c;
+    --color-habi-ochre: #d97706;
+    --color-habi-jade: #047857;
+    --color-habi-plum: #7e22ce;
+    --color-habi-cream: #faf7f2;
+    --color-habi-sand: #f3ece1;
+  }
+
+  body {
+    font-family: var(--font-display);
+    background-color: #f8fafc;
+    color: #0f172a;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+}
+
+/* Woven textile ribbon background pattern */
+.bg-habi-pattern {
+  background-image: 
+    repeating-linear-gradient(45deg, rgba(30, 58, 138, 0.04) 0px, rgba(30, 58, 138, 0.04) 2px, transparent 2px, transparent 10px),
+    repeating-linear-gradient(-45deg, rgba(194, 65, 12, 0.04) 0px, rgba(194, 65, 12, 0.04) 2px, transparent 2px, transparent 10px);
+}
+
+.habi-thread-bar {
+  height: 6px;
+  background: repeating-linear-gradient(
+    90deg,
+    #c2410c 0px,
+    #c2410c 20px,
+    #1d4ed8 20px,
+    #1d4ed8 40px,
+    #d97706 40px,
+    #d97706 60px,
+    #059669 60px,
+    #059669 80px,
+    #7e22ce 80px,
+    #7e22ce 100px
+  );
+}
+
+/* Story highlights */
+mark.hl-contradiction {
+  background-color: #fef08a;
+  color: #854d0e;
+  border-bottom: 2px wavy #eab308;
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+mark.hl-resolved {
+  background-color: #dcfce7;
+  color: #166534;
+  border-bottom: 2px solid #22c55e;
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+mark.hl-flagged {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border-bottom: 2px dotted #ef4444;
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+mark.hl-distress {
+  background-color: #ffedd5;
+  color: #9a3412;
+  border-bottom: 2px dashed #f97316;
+  padding: 0 3px;
+  border-radius: 2px;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
