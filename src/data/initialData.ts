@@ -253,7 +253,7 @@ export const BMC_BLOCKS = [
     icon: 'Coins',
     color: 'border-teal-500 bg-teal-50/50',
     bullets: [
-      'Institutional and classroom licensing: ₱50–₱100 per student/year (anchor B2B revenue)',
+      'Planned institutional licensing: assumed ₱50-100 per student/year; pricing requires validation',
       'Marketplace fees on teacher-contributed materials and exemplars',
       'CSR (Corporate Social Responsibility) sponsorships for public and under-resourced schools'
     ],
@@ -308,13 +308,13 @@ export const BMC_BLOCKS = [
     icon: 'Receipt',
     color: 'border-red-500 bg-red-50/50',
     bullets: [
-      'AI API costs ($0.02–$0.05 per check, ~$0.40–$1.00/student/mo vs ₱50-₱100 license)',
+      'AI API cost assumption: $0.02-0.05/check; compare annual costs against annual seat revenue',
       'Cloud hosting & database storage',
       'Developer salaries and cybersecurity hardening',
       'Curriculum alignment labor & archive curation',
       'Content-moderation API & teacher review support'
     ],
-    rationale: 'AI token consumption scales with students; unit economics show $0.40-$1.00/month cost remains well below the projected ₱50-₱100 per seat fee.'
+    rationale: 'At 20 checks/month and $0.03/check, assumed ₱58/USD, AI alone costs ₱417.60/seat/year. A ₱75 annual fee is insufficient before hosting, salaries, and moderation.'
   }
 ];
 
@@ -324,8 +324,8 @@ export const DEFENSE_QUESTIONS: DefenseQuestion[] = [
     section: 'Problem & Evidence',
     question: 'Is this problem real, or did your team just assume it exists?',
     questionTl: 'Totoo ba ang suliraning ito, o ipinalagay lamang ng grupo ninyo?',
-    answer: 'It is cited, not assumed. The World Bank and UNESCO learning poverty brief estimates roughly 91% of Filipino 10-year-olds cannot read an age-appropriate text. In PISA 2022 the Philippines ranked 77th of 81 countries in reading, and DepEd itself described the gap as five to six years of lost learning.',
-    answerTl: 'May matibay na sanggunian: tinatantya ng World Bank at UNESCO na 91% ng 10-taong gulang na batang Pilipino ang hindi nakauunawa ng tamang teksto. Ika-77 sa 81 bansa ang Pilipinas sa PISA 2022 reading.'
+    answer: 'The supplied BMC cites historical reading-comprehension evidence for Filipino 10-year-olds and PISA learners. Those sources do not directly measure creative writing or prove that this app improves it. The team hypothesizes that structured writing feedback can help; classroom pilots must evaluate that hypothesis.',
+    answerTl: 'May historikal na ebidensya sa BMC tungkol sa pag-unawa sa pagbasa ng mga batang 10-taong gulang at mga kalahok sa PISA. Hindi nito direktang sinusukat ang malikhaing pagsulat o epekto ng app. Hinuha ng grupo ang pakinabang ng feedback; kailangan itong subukan sa klase.' 
   },
   {
     id: 2,
@@ -348,8 +348,8 @@ export const DEFENSE_QUESTIONS: DefenseQuestion[] = [
     section: 'Product & Technology',
     question: 'What is your single biggest differentiator? Why can’t students just use ChatGPT?',
     questionTl: 'Ano ang inyong pinakamalaking pagkakaiba? Bakit hindi na lang ChatGPT?',
-    answer: 'Cross-author continuity checking: tracking facts by author across a shared story world and flagging where one student contradicts what another established. A general chatbot reviews one document in one session. It has no class roster, no rubric, no memory of what a student wrote last month, and no way to reconcile facts across several students.',
-    answerTl: 'Ang cross-author continuity checking. Ang ChatGPT ay pang-isahang session lamang, walang class roster, walang rubric, at walang alaala ng isinulat ng iba pang kaklase sa iisang mundo ng kuwento.'
+    answer: 'KwentoHabi combines author-attributed continuity evidence, teacher-assigned references, structured peer discussion, and teacher review in one classroom workflow. Other writing and AI tools can support overlapping capabilities; comparative advantages require a dated evaluation.',
+    answerTl: 'Pinagsasama ng KwentoHabi ang ebidensyang may may-akda, materyales ng guro, talakayan ng mag-aaral, at pagrepaso ng guro. May magkakatulad na kakayahan ang ibang writing at AI tools; kailangan ng pagsusuri upang patunayan ang paghahambing.' 
   },
   {
     id: 5,
@@ -378,18 +378,18 @@ export const DEFENSE_QUESTIONS: DefenseQuestion[] = [
   {
     id: 8,
     section: 'Business & Corporation',
-    question: 'Why is KwentoHabi registered as a Corporation instead of Sole Proprietorship or LLC?',
-    questionTl: 'Bakit Corporation ang KwentoHabi at hindi Sole Proprietorship o LLC?',
-    answer: 'With six co-founders, a stock Corporation under the Revised Corporation Code (RA 11232) allows shared ownership through shares and limits personal liability. That matters because the platform handles student data, and schools expect a formally registered entity. "LLC" is a US designation not recognized in Philippine corporate law.',
-    answerTl: 'Anim ang aming co-founders, kaya kailangan ng paghahati ng shares at limited liability para protektahan ang personal na ari-arian. Ang "LLC" ay terminong Amerikano at hindi umiiral sa batas ng Pilipinas.'
+    question: 'Why does the team propose a Corporation?',
+    questionTl: 'Bakit Corporation ang panukalang anyo ng negosyo?',
+    answer: 'The six-founder team proposes shared stock ownership through a Corporation. This is a business-plan choice, not confirmation of registration or a legal opinion. Formal registration and institutional requirements remain to be verified.',
+    answerTl: 'Iminumungkahi ng anim na founder ang Corporation para sa paghahati ng pagmamay-ari. Panukala ito sa business plan; hindi ito patunay ng rehistrasyon. Kailangan pang beripikahin ang pormal na mga rekisito.' 
   },
   {
     id: 9,
     section: 'Unit Economics',
     question: 'Do your unit economics work? How do you survive the 6-12 month procurement cycle?',
     questionTl: 'Kikita ba ang inyong unit economics? Paano makakaligtas sa 6 hanggang 12 buwang procurement?',
-    answer: 'At an estimated $0.02 to $0.05 per check, about 20 checks/student/month equals ~$0.40 to $1.00 monthly cost—well below the projected ₱50 to ₱100 per-seat annual/semester fee. We survive procurement via pilot schools, lean cloud architecture, free archive access as the acquisition wedge, and CSR corporate sponsorships.',
-    answerTl: 'Napakaliit ng gastos sa AI ($0.40–$1.00 kada buwan bawat estudyante) kumpara sa inaasahang ₱50–₱100 lisensya. Nakatutulong ang libreng archive bilang acquisition wedge at mga CSR sponsorship.'
+    answer: 'The calculator uses an explicit annual license assumption. At 1,000 seats, 20 checks/month, $0.03/check and assumed ₱58/USD, monthly revenue at ₱75/year is ₱6,250 versus ₱34,800 AI cost: a ₱28,550 shortfall. AI alone costs ₱417.60 per seat annually. Pricing, usage caps, infrastructure, staffing, and procurement runway must be validated before claiming sustainability. Marketplace and CSR revenue remain planned.',
+    answerTl: 'Taunang lisensya ang palagay sa calculator. Sa 1,000 mag-aaral, 20 check/buwan, $0.03/check, at palagay na ₱58/USD: ₱6,250 buwanang kita laban sa ₱34,800 AI cost; kulang ng ₱28,550. ₱417.60 bawat taon bawat mag-aaral ang AI lamang. Kailangan pang patunayan ang presyo, limitasyon, at ibang gastos. Planado pa ang marketplace at CSR.' 
   },
   {
     id: 10,
@@ -404,9 +404,9 @@ export const DEFENSE_QUESTIONS: DefenseQuestion[] = [
 export const INITIAL_RUBRICS: RubricStandard[] = [
   {
     id: 'deped-creative-writing',
-    title: 'DepEd Grade 9-10 Creative Writing Competency Rubric',
-    author: 'Department of Education (Curriculum Guide)',
-    category: 'Institutional Standard',
+    title: 'Sample Grade 9-10 Creative Writing Rubric',
+    author: 'KwentoHabi sample; teacher verification required',
+    category: 'Illustrative sample',
     criteria: [
       { name: 'Kaisahan ng Banghay (Plot Consistency)', description: 'Logical flow of events without unexplained contradictions or narrative ruptures.', weight: 30 },
       { name: 'Pagbuo ng Tauhan (Characterization)', description: 'Consistent portrayal of motives, physical attributes, and personality traits.', weight: 25 },
@@ -417,8 +417,8 @@ export const INITIAL_RUBRICS: RubricStandard[] = [
   },
   {
     id: 'shs-literary-critique',
-    title: 'Senior High 21st Century Philippine Literature Rubric',
-    author: 'UST CICS / DepEd Senior High',
+    title: 'Sample Senior High Literature Rubric',
+    author: 'KwentoHabi sample; teacher verification required',
     category: 'Senior High School',
     criteria: [
       { name: 'Depth of Conflict & Resolution', description: 'Resolution of social, natural, or interpersonal dilemmas through meaningful narrative choice.', weight: 35 },

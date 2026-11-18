@@ -1,23 +1,42 @@
-import React, { useState } from 'react';
-import { 
-  Building2, Users, Compass, Coins, Cpu, CheckSquare, Receipt, Sparkles, 
-  HelpCircle, ChevronDown, ChevronRight, Calculator, Image as ImageIcon, 
-  Search, Shield, GraduationCap, ArrowUpRight, CheckCircle2 
-} from 'lucide-react';
-import { BMC_BLOCKS, DEFENSE_QUESTIONS } from '../data/initialData';
+import React, { useState } from "react";
+import {
+  Building2,
+  Users,
+  Compass,
+  Coins,
+  Cpu,
+  CheckSquare,
+  Receipt,
+  Sparkles,
+  HelpCircle,
+  ChevronDown,
+  ChevronRight,
+  Calculator,
+  Image as ImageIcon,
+  Search,
+  Shield,
+  GraduationCap,
+  ArrowUpRight,
+  CheckCircle2,
+} from "lucide-react";
+import { BMC_BLOCKS, DEFENSE_QUESTIONS } from "../data/initialData";
 
 interface BmcAndDefenseProps {
-  lang: 'tl' | 'en';
+  lang: "tl" | "en";
 }
 
 export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
-  const [subTab, setSubTab] = useState<'bmc' | 'defense' | 'infographics' | 'calculator'>('bmc');
-  const [selectedBmcId, setSelectedBmcId] = useState<string>('vp');
-  
+  const [subTab, setSubTab] = useState<
+    "bmc" | "defense" | "infographics" | "calculator"
+  >("bmc");
+  const [selectedBmcId, setSelectedBmcId] = useState<string>("vp");
+
   // Defense Q&A search & filters
-  const [searchDefense, setSearchDefense] = useState('');
-  const [selectedSection, setSelectedSection] = useState<string>('all');
-  const [openQuestionIds, setOpenQuestionIds] = useState<number[]>([1, 3, 4, 8]);
+  const [searchDefense, setSearchDefense] = useState("");
+  const [selectedSection, setSelectedSection] = useState<string>("all");
+  const [openQuestionIds, setOpenQuestionIds] = useState<number[]>([
+    1, 3, 4, 8,
+  ]);
 
   // Unit Economics Calculator State
   const [numStudents, setNumStudents] = useState<number>(1000);
@@ -27,8 +46,8 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
   const [exchangeRate, setExchangeRate] = useState<number>(58);
 
   const toggleQuestion = (id: number) => {
-    setOpenQuestionIds(prev => 
-      prev.includes(id) ? prev.filter(qId => qId !== id) : [...prev, id]
+    setOpenQuestionIds((prev) =>
+      prev.includes(id) ? prev.filter((qId) => qId !== id) : [...prev, id],
     );
   };
 
@@ -38,20 +57,26 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
   const annualRevenuePHP = numStudents * annualSeatFeePHP;
   const monthlyRevenuePHP = annualRevenuePHP / 12;
   const monthlyMarginPHP = monthlyRevenuePHP - monthlyCostPHP;
-  const marginPct = monthlyRevenuePHP > 0 ? Math.round((monthlyMarginPHP / monthlyRevenuePHP) * 100) : 0;
+  const marginPct =
+    monthlyRevenuePHP > 0
+      ? Math.round((monthlyMarginPHP / monthlyRevenuePHP) * 100)
+      : 0;
 
   // Filter defense questions
-  const filteredQuestions = DEFENSE_QUESTIONS.filter(q => {
-    const matchesSection = selectedSection === 'all' || q.section === selectedSection;
-    const matchesSearch = 
+  const filteredQuestions = DEFENSE_QUESTIONS.filter((q) => {
+    const matchesSection =
+      selectedSection === "all" || q.section === selectedSection;
+    const matchesSearch =
       q.question.toLowerCase().includes(searchDefense.toLowerCase()) ||
       q.answer.toLowerCase().includes(searchDefense.toLowerCase()) ||
-      (q.questionTl && q.questionTl.toLowerCase().includes(searchDefense.toLowerCase())) ||
-      (q.answerTl && q.answerTl.toLowerCase().includes(searchDefense.toLowerCase()));
+      (q.questionTl &&
+        q.questionTl.toLowerCase().includes(searchDefense.toLowerCase())) ||
+      (q.answerTl &&
+        q.answerTl.toLowerCase().includes(searchDefense.toLowerCase()));
     return matchesSection && matchesSearch;
   });
 
-  const sections = Array.from(new Set(DEFENSE_QUESTIONS.map(q => q.section)));
+  const sections = Array.from(new Set(DEFENSE_QUESTIONS.map((q) => q.section)));
 
   return (
     <div className="space-y-8">
@@ -62,79 +87,107 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
             <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
               Technopreneurship Stage 1
             </span>
-            <span className="text-xs text-slate-500">Group 5 — 4-ISB | UST CICS</span>
+            <span className="text-xs text-slate-500">
+              Group 5 — 4-ISB | UST CICS
+            </span>
           </div>
           <h2 className="text-xl font-bold font-serif text-slate-900 mt-1">
-            {lang === 'tl'
-              ? 'KwentoHabi, Inc. — Business Model Canvas at Title Defense'
-              : 'KwentoHabi, Inc. — BMC & Title Defense Command Center'}
+            {lang === "tl"
+              ? "KwentoHabi, Inc. — Business Model Canvas at Title Defense"
+              : "KwentoHabi, Inc. — BMC & Title Defense Command Center"}
           </h2>
           <p className="text-xs text-slate-600 mt-0.5">
-            {lang === 'tl'
-              ? 'Inihanda para kay Mr. Fernando Arazo Jr. · Corporation under RA 11232 · SDG 4, 16, 9, 10'
-              : 'Submitted for Mr. Fernando Arazo Jr. · Corporation under RA 11232 · Aligning with SDGs 4, 16, 9, 10'}
+            {lang === "tl"
+              ? "Inihanda para kay Mr. Fernando Arazo Jr. · Proposed Corporation · SDG 4, 16, 9, 10"
+              : "Submitted for Mr. Fernando Arazo Jr. · Proposed Corporation · Aligning with SDGs 4, 16, 9, 10"}
           </p>
         </div>
 
         {/* Sub-tabs */}
         <div className="flex flex-wrap gap-1 bg-slate-100 p-1 rounded-xl">
           <button
-            onClick={() => setSubTab('bmc')}
+            onClick={() => setSubTab("bmc")}
             className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              subTab === 'bmc' ? 'bg-white text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              subTab === "bmc"
+                ? "bg-white text-slate-950 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            {lang === 'tl' ? '9-Block Canvas' : '9-Block Canvas'}
+            {lang === "tl" ? "9-Block Canvas" : "9-Block Canvas"}
           </button>
           <button
-            onClick={() => setSubTab('defense')}
+            onClick={() => setSubTab("defense")}
             className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              subTab === 'defense' ? 'bg-white text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              subTab === "defense"
+                ? "bg-white text-slate-950 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            {lang === 'tl' ? 'Q&A Defense Cheat Sheet' : 'Q&A Defense Sheet'}
+            {lang === "tl" ? "Q&A Defense Cheat Sheet" : "Q&A Defense Sheet"}
           </button>
           <button
-            onClick={() => setSubTab('calculator')}
+            onClick={() => setSubTab("calculator")}
             className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              subTab === 'calculator' ? 'bg-white text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              subTab === "calculator"
+                ? "bg-white text-slate-950 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            {lang === 'tl' ? 'Unit Economics' : 'Unit Economics'}
+            {lang === "tl" ? "Unit Economics" : "Unit Economics"}
           </button>
           <button
-            onClick={() => setSubTab('infographics')}
+            onClick={() => setSubTab("infographics")}
             className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
-              subTab === 'infographics' ? 'bg-white text-slate-950 shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              subTab === "infographics"
+                ? "bg-white text-slate-950 shadow-xs"
+                : "text-slate-600 hover:text-slate-900"
             }`}
           >
-            {lang === 'tl' ? 'Infographics & Mind Map' : 'Infographics & Mind Map'}
+            {lang === "tl"
+              ? "Infographics & Mind Map"
+              : "Infographics & Mind Map"}
           </button>
         </div>
       </div>
 
+      <p className="notice">
+        {lang === "tl"
+          ? "BMC: panukalang modelo ng negosyo. Planado pa ang lisensya, bayad sa marketplace, CSR, at awtomatikong referral. Ang Corporation ay panukalang anyo; walang beripikasyon ng rehistrasyon dito."
+          : "BMC: proposed business model. Licensing, marketplace payments, CSR administration, and automatic referrals are planned. Corporation is the proposed structure; registration is not verified here."}
+      </p>
       {/* SUB-TAB 1: 9-BLOCK BUSINESS MODEL CANVAS */}
-      {subTab === 'bmc' && (
+      {subTab === "bmc" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3">
-            {BMC_BLOCKS.map(block => (
+          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-3 gap-3">
+            {BMC_BLOCKS.map((block) => (
               <div
                 key={block.id}
+                role="button"
+                tabIndex={0}
+                aria-pressed={selectedBmcId === block.id}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setSelectedBmcId(block.id);
+                  }
+                }}
                 onClick={() => setSelectedBmcId(block.id)}
                 className={`p-4 rounded-xl border cursor-pointer transition-all ${
                   selectedBmcId === block.id
-                    ? 'border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-200 shadow-xs'
-                    : 'border-slate-200 bg-white hover:border-slate-300'
+                    ? "border-indigo-600 bg-indigo-50/60 ring-2 ring-indigo-200 shadow-xs"
+                    : "border-slate-200 bg-white hover:border-slate-300"
                 }`}
               >
                 <div className="flex items-center justify-between mb-2">
                   <span className="font-bold text-xs uppercase tracking-wider text-slate-900">
-                    {lang === 'tl' ? block.titleTl : block.title}
+                    {lang === "tl" ? block.titleTl : block.title}
                   </span>
                 </div>
                 <ul className="text-[11px] text-slate-600 space-y-1 list-disc list-inside">
                   {block.bullets.slice(0, 2).map((b, i) => (
-                    <li key={i} className="line-clamp-2">{b}</li>
+                    <li key={i} className="break-words">
+                      {b}
+                    </li>
                   ))}
                 </ul>
               </div>
@@ -143,27 +196,35 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
 
           {/* Active Block Inspector */}
           {(() => {
-            const activeBlock = BMC_BLOCKS.find(b => b.id === selectedBmcId) || BMC_BLOCKS[1];
+            const activeBlock =
+              BMC_BLOCKS.find((b) => b.id === selectedBmcId) || BMC_BLOCKS[1];
             return (
               <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                   <div>
                     <span className="text-xs font-bold uppercase tracking-wider text-indigo-700">
-                      {lang === 'tl' ? 'Pagsusuri sa Bloke ng BMC' : 'BMC Block Deep Dive'}
+                      {lang === "tl"
+                        ? "Pagsusuri sa Bloke ng BMC"
+                        : "BMC Block Deep Dive"}
                     </span>
                     <h3 className="text-xl font-bold font-serif text-slate-900">
-                      {lang === 'tl' ? activeBlock.titleTl : activeBlock.title}
+                      {lang === "tl" ? activeBlock.titleTl : activeBlock.title}
                     </h3>
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-slate-700">
-                    {lang === 'tl' ? 'Mga Nilalaman sa Canvas:' : 'Key Canvas Points:'}
+                    {lang === "tl"
+                      ? "Mga Nilalaman sa Canvas:"
+                      : "Key Canvas Points:"}
                   </h4>
                   <ul className="space-y-2">
                     {activeBlock.bullets.map((b, idx) => (
-                      <li key={idx} className="flex items-start space-x-2 text-xs sm:text-sm text-slate-800">
+                      <li
+                        key={idx}
+                        className="flex items-start space-x-2 text-xs sm:text-sm text-slate-800"
+                      >
                         <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
                         <span>{b}</span>
                       </li>
@@ -173,7 +234,9 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
 
                 <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
                   <span className="text-xs font-bold text-slate-900 uppercase tracking-wider">
-                    {lang === 'tl' ? 'Bakit Ito Naroon (Defense Rationale):' : 'Why It Is There (Defense Rationale):'}
+                    {lang === "tl"
+                      ? "Bakit Ito Naroon (Defense Rationale):"
+                      : "Why It Is There (Defense Rationale):"}
                   </span>
                   <p className="text-xs text-slate-700 leading-relaxed">
                     {activeBlock.rationale}
@@ -186,24 +249,49 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
           {/* Four Pillars of Technopreneurship Test (From Reviewer) */}
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <h3 className="text-lg font-bold font-serif text-slate-900">
-              {lang === 'tl' ? 'Ang Apat na Haligi ng Technopreneurship' : 'The Four Technopreneurship Pillars'}
+              {lang === "tl"
+                ? "Ang Apat na Haligi ng Technopreneurship"
+                : "The Four Technopreneurship Pillars"}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="font-bold text-indigo-900 block text-sm">1. Innovative (Makabago)</span>
-                <p className="text-slate-600">Cross-author continuity checking: pagtutugma ng detalye mula sa magkakaibang may-akda sa iisang dokumento (wala sa Grammarly, Notion, o Scrivener).</p>
+                <span className="font-bold text-indigo-900 block text-sm">
+                  1. Innovative (Makabago)
+                </span>
+                <p className="text-slate-600">
+                  Cross-author continuity checking: pagtutugma ng detalye mula
+                  sa magkakaibang may-akda sa iisang dokumento (wala sa
+                  Grammarly, Notion, o Scrivener).
+                </p>
               </div>
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="font-bold text-emerald-900 block text-sm">2. Sustainable (Napapanatili)</span>
-                <p className="text-slate-600">Institutional licensing (₱50-₱100/seat) bilang anchor revenue; mas mababa nang malaki ang AI API cost ($0.40-$1.00/student/mo).</p>
+                <span className="font-bold text-emerald-900 block text-sm">
+                  2. Sustainable (Napapanatili)
+                </span>
+                <p className="text-slate-600">
+                  Institutional licensing (₱50-₱100/seat) bilang anchor revenue;
+                  mas mababa nang malaki ang AI API cost
+                  ($0.40-$1.00/student/mo).
+                </p>
               </div>
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="font-bold text-amber-900 block text-sm">3. Something New (Bago)</span>
-                <p className="text-slate-600">Bagong paggamit ng AI: ginagawang kasangkapan sa pagtuturo, pagmamarka, at mapayapang pakikipagkapwa ang continuity checking.</p>
+                <span className="font-bold text-amber-900 block text-sm">
+                  3. Something New (Bago)
+                </span>
+                <p className="text-slate-600">
+                  Bagong paggamit ng AI: ginagawang kasangkapan sa pagtuturo,
+                  pagmamarka, at mapayapang pakikipagkapwa ang continuity
+                  checking.
+                </p>
               </div>
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-                <span className="font-bold text-purple-900 block text-sm">4. Current Society Problem</span>
-                <p className="text-slate-600">Tumutugon sa 91% Philippine learning poverty at totoong grading bottleneck ng 30+ mag-aaral sa bawat klase.</p>
+                <span className="font-bold text-purple-900 block text-sm">
+                  4. Current Society Problem
+                </span>
+                <p className="text-slate-600">
+                  Tumutugon sa 91% Philippine learning poverty at totoong
+                  grading bottleneck ng 30+ mag-aaral sa bawat klase.
+                </p>
               </div>
             </div>
           </div>
@@ -211,18 +299,20 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
       )}
 
       {/* SUB-TAB 2: DEFENSE Q&A SIMULATOR */}
-      {subTab === 'defense' && (
+      {subTab === "defense" && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div>
                 <h3 className="text-lg font-bold font-serif text-slate-900">
-                  {lang === 'tl' ? 'KwentoHabi Title Defense — Q&A Cheat Sheet' : 'Anticipated Panel Questions & Answers'}
+                  {lang === "tl"
+                    ? "KwentoHabi Title Defense — Q&A Cheat Sheet"
+                    : "Anticipated Panel Questions & Answers"}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {lang === 'tl'
-                    ? 'Lahat ng posibleng tanong ng panel, nakaayos ayon sa paksa (Problem, Technology, Corporation, SDGs, Unit Economics).'
-                    : 'Comprehensive answers to panel inquiries on moat, pedagogy, law, and unit economics.'}
+                  {lang === "tl"
+                    ? "Lahat ng posibleng tanong ng panel, nakaayos ayon sa paksa (Problem, Technology, Corporation, SDGs, Unit Economics)."
+                    : "Comprehensive answers to panel inquiries on moat, pedagogy, law, and unit economics."}
                 </p>
               </div>
 
@@ -234,7 +324,11 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                     type="text"
                     value={searchDefense}
                     onChange={(e) => setSearchDefense(e.target.value)}
-                    placeholder={lang === 'tl' ? 'Maghanap ng tanong...' : 'Search question...'}
+                    placeholder={
+                      lang === "tl"
+                        ? "Maghanap ng tanong..."
+                        : "Search question..."
+                    }
                     className="pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-indigo-500 w-44"
                   />
                 </div>
@@ -244,9 +338,13 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                   onChange={(e) => setSelectedSection(e.target.value)}
                   className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500"
                 >
-                  <option value="all">{lang === 'tl' ? 'Lahat ng Paksa' : 'All Topics'}</option>
+                  <option value="all">
+                    {lang === "tl" ? "Lahat ng Paksa" : "All Topics"}
+                  </option>
                   {sections.map((s, idx) => (
-                    <option key={idx} value={s}>{s}</option>
+                    <option key={idx} value={s}>
+                      {s}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -254,11 +352,14 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
 
             {/* Accordion Questions */}
             <div className="space-y-3 pt-2">
-              {filteredQuestions.map(q => {
+              {filteredQuestions.map((q) => {
                 const isOpen = openQuestionIds.includes(q.id);
 
                 return (
-                  <div key={q.id} className="border border-slate-200 rounded-xl overflow-hidden transition-all">
+                  <div
+                    key={q.id}
+                    className="border border-slate-200 rounded-xl overflow-hidden transition-all"
+                  >
                     <button
                       onClick={() => toggleQuestion(q.id)}
                       className="w-full p-4 text-left bg-slate-50/70 hover:bg-slate-100 flex items-center justify-between transition-colors"
@@ -272,7 +373,9 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                             {q.section}
                           </span>
                           <span className="font-bold text-xs sm:text-sm text-slate-900">
-                            {lang === 'tl' && q.questionTl ? q.questionTl : q.question}
+                            {lang === "tl" && q.questionTl
+                              ? q.questionTl
+                              : q.question}
                           </span>
                         </div>
                       </div>
@@ -285,8 +388,10 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
 
                     {isOpen && (
                       <div className="p-4 bg-white text-xs sm:text-sm text-slate-800 leading-relaxed border-t border-slate-200 space-y-2">
-                        <p>{lang === 'tl' && q.answerTl ? q.answerTl : q.answer}</p>
-                        {lang === 'tl' && (
+                        <p>
+                          {lang === "tl" && q.answerTl ? q.answerTl : q.answer}
+                        </p>
+                        {lang === "tl" && (
                           <p className="text-[11px] text-slate-500 border-t border-slate-100 pt-2 italic">
                             English version: "{q.answer}"
                           </p>
@@ -302,18 +407,22 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
       )}
 
       {/* SUB-TAB 3: UNIT ECONOMICS CALCULATOR */}
-      {subTab === 'calculator' && (
+      {subTab === "calculator" && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
             <div>
               <h3 className="text-lg font-bold font-serif text-slate-900 flex items-center space-x-2">
                 <Calculator className="w-5 h-5 text-indigo-600" />
-                <span>{lang === 'tl' ? 'Interactive Unit Economics Simulator' : 'Unit Economics & Procurement Runway'}</span>
+                <span>
+                  {lang === "tl"
+                    ? "Interactive Unit Economics Simulator"
+                    : "Unit Economics & Procurement Runway"}
+                </span>
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                {lang === 'tl'
-                  ? 'Patunayan ang kakayahan ng modelo: Tantiya sa gastos ng AI ($0.02 - $0.05 kada check) kumpara sa inaasahang ₱50 - ₱100 seat fee.'
-                  : 'Demonstrating margin viability against the 6-12 month educational sales cycle.'}
+                {lang === "tl"
+                  ? "Mga palagay lamang: taunang lisensya, buwanang gastos, at ipinagpalagay na palitan. Hindi pa napatutunayan ang presyo o kita."
+                  : "Planning assumptions only: annual seat fees, monthly costs, and assumed PHP/USD exchange rate. No validated pricing or profitability claim."}
               </p>
             </div>
 
@@ -321,19 +430,26 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
               {/* Inputs */}
               <div className="space-y-4 p-5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
                 <h4 className="font-bold uppercase tracking-wider text-slate-700">
-                  {lang === 'tl' ? 'Mga Parametro (Variables)' : 'Parameters'}
+                  {lang === "tl" ? "Mga Parametro (Variables)" : "Parameters"}
                 </h4>
 
                 <div>
                   <div className="flex justify-between font-medium text-slate-700 mb-1">
-                    <span>{lang === 'tl' ? 'Bilang ng mga Mag-aaral:' : 'Number of Student Seats:'}</span>
-                    <span className="font-bold font-mono text-slate-900">{numStudents.toLocaleString()}</span>
+                    <span>
+                      {lang === "tl"
+                        ? "Bilang ng mga Mag-aaral:"
+                        : "Number of Student Seats:"}
+                    </span>
+                    <span className="font-bold font-mono text-slate-900">
+                      {numStudents.toLocaleString()}
+                    </span>
                   </div>
                   <input
                     type="range"
                     min="100"
                     max="10000"
                     step="100"
+                    aria-label="Student seats"
                     value={numStudents}
                     onChange={(e) => setNumStudents(Number(e.target.value))}
                     className="w-full accent-indigo-600"
@@ -342,14 +458,21 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
 
                 <div>
                   <div className="flex justify-between font-medium text-slate-700 mb-1">
-                    <span>{lang === 'tl' ? 'Checks kada estudyante bawat buwan:' : 'Checks per student / mo:'}</span>
-                    <span className="font-bold font-mono text-slate-900">{checksPerMonth}</span>
+                    <span>
+                      {lang === "tl"
+                        ? "Checks kada estudyante bawat buwan:"
+                        : "Checks per student / mo:"}
+                    </span>
+                    <span className="font-bold font-mono text-slate-900">
+                      {checksPerMonth}
+                    </span>
                   </div>
                   <input
                     type="range"
                     min="5"
                     max="50"
                     step="5"
+                    aria-label="Checks per student per month"
                     value={checksPerMonth}
                     onChange={(e) => setChecksPerMonth(Number(e.target.value))}
                     className="w-full accent-indigo-600"
@@ -358,14 +481,21 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
 
                 <div>
                   <div className="flex justify-between font-medium text-slate-700 mb-1">
-                    <span>{lang === 'tl' ? 'Tantiyang Gastos sa Gemini API ($/check):' : 'Estimated Gemini Cost ($/check):'}</span>
-                    <span className="font-bold font-mono text-slate-900">${costPerCheckUSD.toFixed(3)}</span>
+                    <span>
+                      {lang === "tl"
+                        ? "Tantiyang Gastos sa Gemini API ($/check):"
+                        : "Estimated Gemini Cost ($/check):"}
+                    </span>
+                    <span className="font-bold font-mono text-slate-900">
+                      ${costPerCheckUSD.toFixed(3)}
+                    </span>
                   </div>
                   <input
                     type="range"
                     min="0.01"
                     max="0.10"
                     step="0.005"
+                    aria-label="Assumed USD cost per check"
                     value={costPerCheckUSD}
                     onChange={(e) => setCostPerCheckUSD(Number(e.target.value))}
                     className="w-full accent-indigo-600"
@@ -374,16 +504,25 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
 
                 <div>
                   <div className="flex justify-between font-medium text-slate-700 mb-1">
-                    <span>{lang === 'tl' ? 'Taunang Bayad sa Lisensya kada Upuan (PHP):' : 'Annual Seat License Fee (PHP):'}</span>
-                    <span className="font-bold font-mono text-slate-900">₱{annualSeatFeePHP}</span>
+                    <span>
+                      {lang === "tl"
+                        ? "Taunang Bayad sa Lisensya kada Upuan (PHP):"
+                        : "Annual Seat License Fee (PHP):"}
+                    </span>
+                    <span className="font-bold font-mono text-slate-900">
+                      ₱{annualSeatFeePHP}
+                    </span>
                   </div>
                   <input
                     type="range"
                     min="30"
                     max="200"
                     step="5"
+                    aria-label="Assumed annual seat fee PHP"
                     value={annualSeatFeePHP}
-                    onChange={(e) => setAnnualSeatFeePHP(Number(e.target.value))}
+                    onChange={(e) =>
+                      setAnnualSeatFeePHP(Number(e.target.value))
+                    }
                     className="w-full accent-indigo-600"
                   />
                 </div>
@@ -394,7 +533,9 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                 <div className="grid grid-cols-2 gap-3 text-center">
                   <div className="p-4 rounded-xl bg-slate-100 border border-slate-200">
                     <span className="text-[10px] uppercase font-bold text-slate-500">
-                      {lang === 'tl' ? 'Buwanang Gastos sa AI' : 'Monthly AI Cost'}
+                      {lang === "tl"
+                        ? "Buwanang Gastos sa AI"
+                        : "Monthly AI Cost"}
                     </span>
                     <div className="text-xl font-bold font-mono text-rose-600 mt-1">
                       ${monthlyCostUSD.toFixed(2)}
@@ -406,10 +547,15 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
 
                   <div className="p-4 rounded-xl bg-slate-100 border border-slate-200">
                     <span className="text-[10px] uppercase font-bold text-slate-500">
-                      {lang === 'tl' ? 'Buwanang Kita (Amortized)' : 'Monthly Revenue'}
+                      {lang === "tl"
+                        ? "Buwanang Kita (Amortized)"
+                        : "Monthly Revenue"}
                     </span>
                     <div className="text-xl font-bold font-mono text-emerald-600 mt-1">
-                      ₱{monthlyRevenuePHP.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                      ₱
+                      {monthlyRevenuePHP.toLocaleString(undefined, {
+                        maximumFractionDigits: 0,
+                      })}
                     </div>
                     <span className="text-[11px] text-slate-500 font-mono">
                       (₱{annualRevenuePHP.toLocaleString()} / taon)
@@ -420,14 +566,18 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                 <div className="p-5 rounded-xl bg-indigo-950 text-white space-y-2">
                   <div className="flex justify-between items-baseline">
                     <span className="text-xs uppercase tracking-wider text-slate-300 font-bold">
-                      {lang === 'tl' ? 'Tantiyang Gross Margin:' : 'Estimated Gross Margin:'}
+                      {lang === "tl"
+                        ? "Kita matapos ang AI cost:"
+                        : "Revenue less AI cost:"}
                     </span>
-                    <span className="text-2xl font-bold font-mono text-amber-400">{marginPct}%</span>
+                    <span className="text-2xl font-bold font-mono text-amber-400">
+                      {marginPct}%
+                    </span>
                   </div>
                   <p className="text-xs text-slate-300 leading-relaxed">
-                    {lang === 'tl'
-                      ? 'Konklusyon ng Depensa: Kahit sa pinakamababang ₱50-100 fee, nananatiling sapat ang kita para masalo ang gastos sa AI at magpatakbo ng pilot schools.'
-                      : 'Defense Takeaway: The AI check cost ($0.40-$1.00 per student per month) is significantly smaller than the institutional seat license.'}
+                    {lang === "tl"
+                      ? `Buwanang ${monthlyMarginPHP < 0 ? "kakulangan" : "sobra bago ibang gastos"}: ₱${Math.abs(monthlyMarginPHP).toLocaleString()}. Taunang AI cost bawat mag-aaral: ₱${(checksPerMonth * costPerCheckUSD * exchangeRate * 12).toFixed(2)}. Palagay na palitan: ₱${exchangeRate}/USD. Hindi kasama ang hosting, sahod, at moderation.`
+                      : `Monthly ${monthlyMarginPHP < 0 ? "shortfall" : "surplus before other costs"}: ₱${Math.abs(monthlyMarginPHP).toLocaleString()}. Annual AI-only cost per seat: ₱${(checksPerMonth * costPerCheckUSD * exchangeRate * 12).toFixed(2)}. Assumed FX: ₱${exchangeRate}/USD. Hosting, salaries, and moderation are additional costs.`}
                   </p>
                 </div>
               </div>
@@ -437,27 +587,31 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
       )}
 
       {/* SUB-TAB 4: INFOGRAPHICS & MIND MAP FROM ATTACHMENTS */}
-      {subTab === 'infographics' && (
+      {subTab === "infographics" && (
         <div className="space-y-6">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs space-y-6">
             <div>
               <h3 className="text-lg font-bold font-serif text-slate-900 flex items-center space-x-2">
                 <ImageIcon className="w-5 h-5 text-indigo-600" />
-                <span>{lang === 'tl' ? 'Mga Grapiko at Mind Map ng KwentoHabi' : 'Project Visual Assets & Infographics'}</span>
+                <span>
+                  {lang === "tl"
+                    ? "Mga Grapiko at Mind Map ng KwentoHabi"
+                    : "Project Visual Assets & Infographics"}
+                </span>
               </h3>
               <p className="text-xs text-slate-500 mt-1">
-                {lang === 'tl'
-                  ? 'Mga opisyal na diagram mula sa BMC presentation ng UST Group 5.'
-                  : 'Diagrams and architectural schematics submitted with the Technopreneurship portfolio.'}
+                {lang === "tl"
+                  ? "Mga opisyal na diagram mula sa BMC presentation ng UST Group 5."
+                  : "Diagrams and architectural schematics submitted with the Technopreneurship portfolio."}
               </p>
             </div>
 
             {/* Traditional vs KwentoHabi Comparison Infographic */}
             <div className="space-y-2">
               <h4 className="text-sm font-bold text-slate-800">
-                {lang === 'tl'
-                  ? 'Tradisyonal na Feedback laban sa Pinabilis na Proseso ng KwentoHabi'
-                  : 'Traditional Feedback Bottleneck vs. KwentoHabi Automated Process'}
+                {lang === "tl"
+                  ? "Tradisyonal na Feedback laban sa Pinabilis na Proseso ng KwentoHabi"
+                  : "Traditional Feedback Bottleneck vs. KwentoHabi Automated Process"}
               </h4>
               <div className="rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-slate-50">
                 <img
@@ -471,9 +625,9 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
             {/* Mind Map */}
             <div className="space-y-2 pt-4 border-t border-slate-100">
               <h4 className="text-sm font-bold text-slate-800">
-                {lang === 'tl'
-                  ? 'NotebookLM Mind Map: Pag-uugnay ng mga Bloke ng BMC'
-                  : 'NotebookLM Mind Map: Interconnection of BMC Building Blocks'}
+                {lang === "tl"
+                  ? "NotebookLM Mind Map: Pag-uugnay ng mga Bloke ng BMC"
+                  : "NotebookLM Mind Map: Interconnection of BMC Building Blocks"}
               </h4>
               <div className="rounded-xl overflow-hidden border border-slate-200 shadow-xs bg-slate-50">
                 <img
