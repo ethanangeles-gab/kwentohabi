@@ -24,6 +24,8 @@ export function Dialog({
       ref={ref}
       aria-labelledby={id}
       onKeyDown={(event) => {
+        if ((event.target as Element).closest("dialog") !== event.currentTarget)
+          return;
         if (event.key !== "Tab") return;
         const controls = [
           ...ref.current!.querySelectorAll<HTMLElement>(
@@ -47,6 +49,7 @@ export function Dialog({
       }}
       onCancel={(e) => {
         e.preventDefault();
+        e.stopPropagation();
         onClose();
       }}
       className="dialog-panel"

@@ -365,7 +365,7 @@ export function TeacherDashboard({
               </div>
               <div className="h-2 bg-slate-100 rounded">
                 <div
-                  className="bg-indigo-600 h-full rounded"
+                  className="progress-fill h-full rounded"
                   style={{ width: `${(c.words / max) * 100}%` }}
                 />
               </div>

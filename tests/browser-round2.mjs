@@ -97,15 +97,13 @@ try {
     .getByRole("button", { name: "Add material", exact: true })
     .click();
   let dialog = teacher.getByRole("dialog");
-  await dialog
-    .getByLabel("Import document", { exact: true })
-    .setInputFiles({
-      name: "continuity.pdf",
-      mimeType: "application/pdf",
-      buffer: pdfFixture(
-        "Reviewed PDF reference: maintain narrative continuity.",
-      ),
-    });
+  await dialog.getByLabel("Import document", { exact: true }).setInputFiles({
+    name: "continuity.pdf",
+    mimeType: "application/pdf",
+    buffer: pdfFixture(
+      "Reviewed PDF reference: maintain narrative continuity.",
+    ),
+  });
   await dialog
     .getByLabel("Reference text (optional)", { exact: true })
     .filter({ visible: true })
@@ -115,14 +113,12 @@ try {
       .querySelector('dialog textarea[aria-label="Reference text (optional)"]')
       ?.value.includes("Reviewed PDF reference"),
   );
-  await dialog
-    .getByLabel("Import document", { exact: true })
-    .setInputFiles({
-      name: "folklore.docx",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-      buffer: docxFixture("Reviewed DOCX reference: credit every storyteller."),
-    });
+  await dialog.getByLabel("Import document", { exact: true }).setInputFiles({
+    name: "folklore.docx",
+    mimeType:
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    buffer: docxFixture("Reviewed DOCX reference: credit every storyteller."),
+  });
   await teacher.waitForFunction(() =>
     document
       .querySelector('dialog textarea[aria-label="Reference text (optional)"]')
@@ -154,9 +150,15 @@ try {
     }),
     maria = await mariaContext.newPage();
   maria.on("pageerror", (error) => errors.push(error.message));
+  await maria.addInitScript(() => {
+    if (!localStorage.getItem("kwentohabi-language"))
+      localStorage.setItem("kwentohabi-language", '"en"');
+  });
   await maria.goto(f.url);
-  await maria.getByRole("button", { name: "English", exact: true }).click();
-  await maria.getByLabel("Teacher / student username").fill("maria");
+  await maria
+    .getByRole("combobox", { name: "Sign in as", exact: true })
+    .selectOption("student");
+  await maria.getByLabel(/username/i).fill("maria");
   await maria.getByLabel("Password", { exact: true }).fill(password("maria"));
   await maria.getByRole("button", { name: "Sign in", exact: true }).click();
   await maria
@@ -305,6 +307,7 @@ try {
     viewport: { width: 390, height: 844 },
   });
   await brokenContext.addInitScript(() => {
+    localStorage.setItem("kwentohabi-language", '"en"');
     Storage.prototype.setItem = function () {
       throw new DOMException("Test quota exhausted", "QuotaExceededError");
     };
@@ -312,8 +315,10 @@ try {
   const broken = await brokenContext.newPage();
   broken.on("pageerror", (error) => errors.push(error.message));
   await broken.goto(f.url);
-  await broken.getByRole("button", { name: "English", exact: true }).click();
-  await broken.getByLabel("Teacher / student username").fill("jose");
+  await broken
+    .getByRole("combobox", { name: "Sign in as", exact: true })
+    .selectOption("student");
+  await broken.getByLabel(/username/i).fill("jose");
   await broken.getByLabel("Password", { exact: true }).fill(password("jose"));
   await broken.getByRole("button", { name: "Sign in", exact: true }).click();
   await broken

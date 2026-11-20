@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { api } from "../utils/client";
 import { GuardianRecord } from "./GuardianRecord";
 import { Dialog } from "./Dialog";
+import { InvitationControl } from "./InvitationControl";
+import { ACCOUNT_IDENTIFIER_MAX_LENGTH } from "../utils/accountIdentifier";
 import type { SessionUser } from "../types";
 
 export function PasswordControl({ lang }: { lang: "tl" | "en" }) {
@@ -120,15 +122,18 @@ export function ClassRoster({
         <h3 className="font-serif text-xl font-bold">
           {t("Talaan ng klase", "Class roster")} · {classId}
         </h3>
-        <button
-          className="btn-light"
-          onClick={() => {
-            setOpen(true);
-            setError("");
-          }}
-        >
-          {t("Magdagdag ng mag-aaral", "Add student")}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          <InvitationControl classId={classId} lang={lang} />
+          <button
+            className="btn-light"
+            onClick={() => {
+              setOpen(true);
+              setError("");
+            }}
+          >
+            {t("Magdagdag ng mag-aaral", "Add student")}
+          </button>
+        </div>
       </div>
       <p className="text-xs text-slate-500">
         {t(
@@ -213,13 +218,15 @@ export function ClassRoster({
               <input required name="name" maxLength={200} />
             </label>
             <label className="field">
-              Username
+              Username / Email
               <input
                 required
                 name="username"
-                pattern="[a-zA-Z0-9._\-]{3,80}"
                 minLength={3}
-                maxLength={80}
+                maxLength={ACCOUNT_IDENTIFIER_MAX_LENGTH}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
               />
             </label>
             <p className="text-sm">

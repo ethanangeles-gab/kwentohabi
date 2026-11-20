@@ -13,6 +13,7 @@ import {
   fail,
   HttpError,
   publicUser,
+  publicSelf,
   tokenHash,
   passwordMatches,
   passwordHash,
@@ -47,6 +48,15 @@ import { LoginProtection, canonicalOrigin } from "./security";
 import { registerClassroomRoutes } from "./classroom";
 import { applyAnalysis } from "./review-state";
 import { PRIVACY_NOTICE } from "./privacy";
+import {
+  ACCOUNT_IDENTIFIER_MAX_LENGTH,
+  isValidAccountIdentifier,
+  normalizeAccountIdentifier,
+} from "../src/utils/accountIdentifier";
+import {
+  registerPublicRegistration,
+  registerInvitationRoutes,
+} from "./registration";
 const app = express();
 const originOverride = canonicalOrigin(process.env.APP_ORIGIN);
 if (process.env.TRUST_PROXY) {
@@ -99,7 +109,7 @@ const auth = (req: Request, _res: Response, next: NextFunction) => {
     session.expires > Date.now() &&
     db.users.find((u) => u.id === session.userId);
   if (!user) return next(new HttpError(401, "Sign in to your school account."));
-  (req as AuthRequest).user = publicUser(user);
+  (req as AuthRequest).user = publicSelf(user);
   next();
 };
 const apiKey = process.env.GEMINI_API_KEY;
@@ -150,7 +160,18 @@ app.post(
   "/api/setup",
   route((req, res) => {
     if (db.users.length) fail(409, "School already configured.");
-    const username = string(req.body.username, "Username", 80).toLowerCase();
+    const username = normalizeAccountIdentifier(
+      string(
+        req.body.username,
+        "Username / Email",
+        ACCOUNT_IDENTIFIER_MAX_LENGTH,
+      ),
+    );
+    if (!isValidAccountIdentifier(username))
+      fail(
+        400,
+        "Enter a valid email address or a username with 3-80 letters, digits, dots, underscores, or hyphens.",
+      );
     if (
       db.users.some((u) => u.username === username) ||
       ["maria", "jose", "ana", "ethan", "sophia"].includes(username)
@@ -158,7 +179,7 @@ app.post(
       fail(400, "Choose a teacher username distinct from the sample students.");
     const accounts = setup(
       string(req.body.school, "School"),
-      string(req.body.username, "Username", 80).toLowerCase(),
+      username,
       string(req.body.password, "Password", 128, 12),
     );
     signIn(res, "teacher");
@@ -168,7 +189,16 @@ app.post(
 app.post(
   "/api/login",
   route((req, res) => {
-    const username = string(req.body.username, "Username", 80).toLowerCase(),
+    const role = req.body.role;
+    if (role !== "teacher" && role !== "student")
+      fail(400, "Choose Teacher or Student before signing in.");
+    const username = normalizeAccountIdentifier(
+        string(
+          req.body.username,
+          "Username / Email",
+          ACCOUNT_IDENTIFIER_MAX_LENGTH,
+        ),
+      ),
       password = string(req.body.password, "Password", 128);
     const user = db.users.find((u) => u.username === username);
     const ip = req.ip || "local";
@@ -181,11 +211,17 @@ app.post(
       loginProtection.failure(ip, username);
       fail(401, "Incorrect username or password.");
     }
+    if (user!.role !== role)
+      fail(
+        403,
+        "Your account does not match the selected role. Choose the correct role and try again.",
+      );
     loginProtection.success(ip, username);
     signIn(res, user!.id);
-    res.json({ success: true });
+    res.json({ success: true, role: user!.role });
   }),
 );
+registerPublicRegistration(app, route, signIn);
 app.post(
   "/api/logout",
   auth,
@@ -202,6 +238,7 @@ app.post(
   }),
 );
 app.use("/api", auth);
+registerInvitationRoutes(app, route);
 const visibleStory = (s: StoryWorkspace, u: SessionUser) =>
   u.role === "teacher"
     ? s
@@ -234,6 +271,60 @@ app.get(
   ),
 );
 app.post(
+  "/api/profile",
+  route((req, res) => {
+    if (
+      Object.keys(req.body).some(
+        (key) => !["name", "avatarDataUrl"].includes(key),
+      )
+    )
+      fail(
+        400,
+        "Only your display name and profile picture can be updated here.",
+      );
+    const name = string(req.body.name, "Display name");
+    if (/[\u0000-\u001f\u007f]/.test(name))
+      fail(400, "Display name cannot contain control characters.");
+    const avatar = req.body.avatarDataUrl;
+    if (typeof avatar !== "string" || avatar.length > 131072)
+      fail(400, "Choose a smaller PNG, JPEG, or WebP profile picture.");
+    if (avatar) {
+      const match =
+        /^data:image\/(png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/.exec(
+          avatar,
+        );
+      if (!match || match[2].length % 4 !== 0)
+        fail(400, "Use a PNG, JPEG, or WebP profile picture.");
+      const bytes = Buffer.from(match![2], "base64"),
+        kind = match![1];
+      const valid =
+        kind === "png"
+          ? bytes
+              .subarray(0, 8)
+              .equals(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]))
+          : kind === "jpeg"
+            ? bytes[0] === 255 &&
+              bytes[1] === 216 &&
+              bytes[2] === 255 &&
+              bytes.at(-2) === 255 &&
+              bytes.at(-1) === 217
+            : bytes.toString("ascii", 0, 4) === "RIFF" &&
+              bytes.toString("ascii", 8, 12) === "WEBP";
+      if (!valid)
+        fail(
+          400,
+          "The profile picture could not be read. Choose another image.",
+        );
+    }
+    const record = db.users.find((u) => u.id === req.user.id)!;
+    record.name = name;
+    if (avatar) record.avatarDataUrl = avatar;
+    else delete record.avatarDataUrl;
+    persist();
+    res.json({ user: publicSelf(record) });
+  }),
+);
+app.post(
   "/api/password",
   route((req, res) => {
     const record = db.users.find((u) => u.id === req.user.id)!;
@@ -258,9 +349,18 @@ app.post(
   "/api/users",
   route((req, res) => {
     teacherOnly(req.user);
-    const username = string(req.body.username, "Username", 80).toLowerCase();
-    if (!/^[a-z0-9._-]{3,80}$/.test(username))
-      fail(400, "Use 3-80 letters, digits, dots, underscores, or hyphens.");
+    const username = normalizeAccountIdentifier(
+      string(
+        req.body.username,
+        "Username / Email",
+        ACCOUNT_IDENTIFIER_MAX_LENGTH,
+      ),
+    );
+    if (!isValidAccountIdentifier(username))
+      fail(
+        400,
+        "Enter a valid email address or a username with 3-80 letters, digits, dots, underscores, or hyphens.",
+      );
     if (db.users.some((u) => u.username === username))
       fail(409, "Username already exists.");
     const classId = string(req.body.classId, "Class");

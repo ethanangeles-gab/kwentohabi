@@ -6,6 +6,67 @@ This second pass uses all six supplied `Techno_QA (1)` through `(6)` PDFs as rev
 
 KwentoHabi remains teacher-led, evidence-linked writing support. Students write; teachers decide final outcomes and grades. Automatic checks do not rewrite chapters, diagnose learners, prove learning outcomes, contact guardians, or notify counselors. BMC/pitch content is under **Help & project**, outside the primary classroom navigation.
 
+## Functional username/email identifiers — 20 November 2026
+
+The earlier label-only change left an HTML username pattern and server-side username validation that rejected email addresses. Registration now shares identifier validation between the browser and server: an ordinary email address (up to 254 characters), or the existing 3–80 character username format. The obsolete browser pattern is removed, helper text explains both choices, and case/outer whitespace are normalized consistently. Login, school setup and teacher-created learner accounts support the same identifier length. Login preserves compatibility with existing stored usernames. Roles, join-code requirements, hashed passwords and private class access are unchanged.
+
+One field supplies the account's chosen login identifier; the implementation does not associate an additional email with an existing username, send verification mail or verify mailbox ownership. Public roster responses continue to omit account identifiers.
+
+Verification: TypeScript, production build and **29/29 automated tests passed**, including email syntax/length boundaries, case-insensitive registration/duplicates/sign-in, role mismatch rejection, long email addresses, email-based teacher setup and teacher-provisioned learners. The registration browser suite passed **12 layout states and six selected accessibility scans** and exercised real email registration, logout and sign-in with an uppercase email. The running local server also accepted an email identifier up to join-code validation; no account was created by that live check.
+
+## Running signup service refresh — 20 November 2026
+
+The local KwentoHabi process on port 3001 was running older server code: an anonymous request to `/api/register` fell through to the authentication guard and returned 401 (“Sign in to your school account”). The source route was already public. Restarted only the verified KwentoHabi process on the same port, preserving its workspace, and changed the development command to `tsx watch server.ts` so backend edits reload automatically. An empty anonymous registration request now reaches form validation (400), while the private workspace still requires authentication (401). No account was created during this check.
+
+## Create-account and classroom invitations — 20 November 2026
+
+The configured school's login form now offers **Create account**, with role, name, username, school join code, password confirmation and privacy-notice acknowledgment. Successful registration opens the corresponding home; errors retain the form and allow correction, and Back to sign in returns to login. The school bootstrap remains a separate initial-teacher setup. Login language/theme buttons remain removed.
+
+Teachers generate and revoke class-scoped codes in **Teacher review → Manage classroom accounts → Join codes**. Codes last seven days. Student codes allow 1–100 accounts; teacher codes are single-use. Codes are displayed once and stored only as hashes with usage/issuer metadata. The server verifies the code and matching role, derives class/role from it, hashes the password, atomically persists consumption/account/session, and enforces class scope. Rejected, duplicate or invalid attempts do not consume codes. Concurrent requests cannot exceed a code's remaining uses. Public registration attempts are bounded separately from failed-login budgets.
+
+Self-registered students have actual accounts and pending school authorization; notice acknowledgment does not grant guardian authorization or expose existing group manuscripts. Passwords are not written to browser storage. Existing stores migrate the invitations field, and backups preserve the invitation records along with the rest of the workspace.
+
+Verification: **27/27 automated tests passed**, including missing/invalid/expired/revoked/exhausted codes, role/class/privilege guards, duplicate usernames, concurrent redemption, private group boundaries, password/code hashing, persistence and sign-in after restart. The new browser suite passed **12 responsive states and six selected accessibility scans** with no violations or JavaScript errors. Teacher/student signup, notice/password validation, retained error corrections, code issue/revoke and correct role homes were exercised. Screenshots/results are `tmp/registration-form-dark.png`, `tmp/registration-invitations-light.png`, and `tmp/registration-results.json`. TypeScript, production build and the complete browser command passed: **160 responsive layout states and 36 selected accessibility scans**, with zero detected violations or JavaScript errors.
+
+## Logo-based light/dark interface — 20 November 2026
+
+Shared color tokens now carry the logo's honey gold, orange, woven red and warm paper tones across the application. Light mode uses cream surfaces with brown text and golden controls; dark mode uses deep cocoa surfaces, warm cream text and golden controls. The palette covers authentication, role homes, writing/wiki/materials/review views, BMC tools, forms, dialogs, menus, profile defaults, progress bars, focus/selection indicators and the woven motif/ribbon. Browser theme metadata uses the matching page background. Existing accent/neutral utilities inherit warm palette aliases, and preset author/BMC decorations use warm colors. Semantic success and safety states remain separately labeled.
+
+The logo artwork, authentication rules, story data and theme preference behavior are unchanged. Contrast checks identified and corrected the continuity-review panel and calculator note colors. The continuity panel now has a dedicated warm dark surface and readable hint text; its action button uses the shared primary-control tokens.
+
+Verification: TypeScript and production build passed. The complete browser command passed **148 responsive language/view/size states**, classroom/profile/login workflows and **30 selected accessibility scans with zero detected violations and JavaScript errors**. Both language layouts and both theme modes were exercised. Current screenshots include `tmp/qa-desktop-canvas.png`, `tmp/round2-mobile-home.png`, `tmp/profile-settings-light.png` and `tmp/profile-settings-dark.png`. Automated scans do not replace screen-reader and user testing.
+
+## Supplied woven-star logo and warm wordmark — 20 November 2026
+
+The current asset uses the newly supplied `KwentoHabi_Woven_Star_Emblem-removebg-preview.png`, preserved as `public/assets/brand/kwentohabi-logo-woven-source.png`. Only the existing “KwentoHabi” letter fill is recolored with an orange/yellow gradient; the font, geometry, emblem, book, tagline and transparency are retained. A code-native SVG color mask isolates the original wordmark at rows 335–399, and its transparent 500 × 500 PNG render is `kwentohabi-logo-warm.png`. The shared logo component and favicon/touch icon use this file. This replaces the interrupted teal/orange rounded-lettering preview.
+
+Pixel verification of the PNG against the supplied source found **zero visible pixel differences outside the wordmark** and **zero alpha-channel differences**; 12,833 wordmark pixels changed color. No source artwork was regenerated for this version. The editable SVG and exact source remain available for future controlled changes.
+
+## Transparent official logo update — 20 November 2026
+
+The user-supplied background-free PNG replaces the opaque logo in the shared login/header component and favicon/touch-icon links. The new asset, `public/assets/brand/kwentohabi-logo-transparent.png`, is copied unchanged (154 × 161; SHA-256 `1917ee9f6e08ef06e5f345596d2f118bbd91794346143d48a601bbcf1e495d97`). The image's alpha channel is preserved, and the cream CSS background is removed. A distinct asset URL avoids reuse of the cached opaque version. This supersedes the background treatment recorded below.
+
+## Official logo follow-up — 20 November 2026
+
+The supplied official 154 × 161 PNG is copied byte-for-byte to `public/assets/brand/kwentohabi-logo.png`; SHA-256: `ed7e4df3a7a05f624390b7aa52ed7bb12fa0a9761d6e0c157328957e13a08c31`. A shared image component displays it on login/setup and teacher/student headers, retaining the complete artwork and cream background in either theme. The header retains school/account context and top-right profile access. The same original is linked as the browser favicon and touch icon. No artwork was regenerated or recolored.
+
+TypeScript and production build passed. Targeted browser verification passed **24 login/teacher/student layout states** across two languages, two themes and 320/1440px widths, plus **six selected accessibility scans with zero detected violations or JavaScript errors**. Checks verify original asset bytes, intrinsic dimensions/proportions, an accessible brand heading, profile alignment, and the continued absence of login theme/language buttons. Screenshots/results are retained under `tmp/brand/`.
+
+## Teacher/student sign-in follow-up — 20 November 2026
+
+The login form now requires **Sign in as: Teacher / Student** before submission and explains which account to use. Username and password remain required. The server independently checks the selected role against the authenticated account before issuing a session. A mismatch shows a translated correction message and does not create a session or alter stored permissions. Choosing another role clears the message for retry. Role-selection mistakes with valid credentials do not spend failed-password budgets. Sign-out resets the selection; school setup remains teacher-only. The removed login language/theme buttons remain absent.
+
+`POST /api/login` now requires `role: "teacher" | "student"` in addition to username/password. Missing or invalid roles return 400; a valid password with the wrong selected role returns 403; invalid credentials return 401. Successful responses return the stored account role. Existing API and browser fixtures were updated to explicitly supply the intended role.
+
+Verification: TypeScript and production build passed, and **26/26 automated tests passed**. Dedicated API checks cover missing/invalid roles, both mismatch directions, no session creation on rejection, matching-role sign-in, and unchanged permissions. Dedicated browser checks passed both role dashboards, mismatch correction, sign-out reset, **eight responsive language/theme states**, and **four accessibility scans with zero detected violations and JavaScript errors**. Screenshot/results: `tmp/login-role-selector.png`, `tmp/login-role-results.json`. The complete browser command also passed all **148 layout states** and **30 selected accessibility scans**, with no detected violations or JavaScript errors.
+
+## Profile and appearance follow-up — 20 November 2026
+
+- The top-right profile picture/initials opens an accessible disclosure with **Profile settings**, a Dark mode switch, privacy notice, shared-device draft control, and sign-out.
+- Both roles can save their own display name and upload/remove a PNG/JPEG/WebP picture. Client-side cropping/resizing keeps the stored image small. The authenticated endpoint validates size/type, rejects permission/class/other-user changes, and persists account settings. Photos are returned only to their owner, not included in the classroom roster. Password controls remain available in profile settings.
+- Light/dark styling covers sign-in, classroom tools, dialogs, reading/highlights and BMC. The initial theme follows the OS; a chosen preference is retained in browser storage, applied before the app paints, and synchronized between tabs. Storage failure still applies the selected theme and is explained in settings/menu.
+- Verification: TypeScript and production build passed; **25/25 automated tests** passed, including profile authorization/validation/privacy/restart persistence. The new UI suite passed **16 profile layout states** (four widths × two languages × two themes), photo upload/removal, save failure/retry, teacher/student editing, reload/sign-out and theme synchronization. **21 selected light/dark accessibility scans** detected no violations or JavaScript errors. Existing 124-state browser regressions and five prior accessibility scans also passed. The password dialog keeps keyboard focus and Escape within the active dialog, returning to profile settings when closed. New screenshots/results: `tmp/profile-settings-light.png`, `tmp/profile-settings-dark.png`, `tmp/profile-settings-mobile-dark.png`, `tmp/profile-theme-results.json`.
+
 ## Second-pass confirmed findings
 
 “Implemented” describes the repaired behavior and regression checks below. It does not certify live model accuracy or production school readiness.

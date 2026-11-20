@@ -41,10 +41,13 @@ try {
   const page = await browser.newPage({
     viewport: { width: 1440, height: 1000 },
   });
+  await page.addInitScript(() => {
+    if (!localStorage.getItem("kwentohabi-language"))
+      localStorage.setItem("kwentohabi-language", '"en"');
+  });
   await page.goto(url);
-  await page.getByRole("button", { name: "English", exact: true }).click();
   await page.getByLabel("School", { exact: true }).fill("KwentoHabi QA School");
-  await page.getByLabel("Teacher / student username").fill("qa-teacher");
+  await page.getByLabel(/username/i).fill("qa-teacher");
   await page
     .getByLabel("Password", { exact: true })
     .fill("qa-classroom-password");
@@ -167,9 +170,14 @@ try {
     "Add material"
   )
     throw Error("Dialog did not restore focus");
-  await page.getByText("Account", { exact: true }).first().click();
+  await page
+    .getByRole("button", { name: "Open profile menu", exact: true })
+    .click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
-  await page.getByLabel("Teacher / student username").fill("maria");
+  await page
+    .getByRole("combobox", { name: "Sign in as", exact: true })
+    .selectOption("student");
+  await page.getByLabel(/username/i).fill("maria");
   await page
     .getByLabel("Password", { exact: true })
     .fill(credentials.find((c) => c.username === "maria").password);
@@ -187,9 +195,15 @@ try {
     viewport: { width: 390, height: 844 },
   });
   const peer = await peerContext.newPage();
+  await peer.addInitScript(() => {
+    if (!localStorage.getItem("kwentohabi-language"))
+      localStorage.setItem("kwentohabi-language", '"en"');
+  });
   await peer.goto(url);
-  await peer.getByRole("button", { name: "English", exact: true }).click();
-  await peer.getByLabel("Teacher / student username").fill("jose");
+  await peer
+    .getByRole("combobox", { name: "Sign in as", exact: true })
+    .selectOption("student");
+  await peer.getByLabel(/username/i).fill("jose");
   await peer
     .getByLabel("Password", { exact: true })
     .fill(credentials.find((c) => c.username === "jose").password);

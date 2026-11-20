@@ -233,6 +233,7 @@ test(
     });
     const learner = apiClient(url);
     await learner("/api/login", {
+      role: "student",
       username: added.data.username,
       password: added.data.password,
     });

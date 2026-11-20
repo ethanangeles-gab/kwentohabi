@@ -50,8 +50,13 @@ test(
       ["ethan", ethan],
     ] as const)
       assert.equal(
-        (await request("/api/login", { username: id, password: password(id) }))
-          .status,
+        (
+          await request("/api/login", {
+            role: "student",
+            username: id,
+            password: password(id),
+          })
+        ).status,
         200,
       );
     let w = (await teacher("/api/workspace")).data;
