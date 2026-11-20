@@ -1,6 +1,8 @@
-﻿# KwentoHabi
+# KwentoHabi
 
 A teacher-led writing workspace: students author their stories, teachers guide revision, and evidence-linked checks surface details worth discussing. Version 1.2 includes the second QA pass dated 20 November 2026.
+
+The current logo at `public/assets/brand/kwentohabi-logo-warm.png` uses the user-supplied woven-star artwork and original lettering, with an orange/yellow wordmark fill. The emblem, book, tagline and transparency are unchanged. It appears on login/setup, both role headers and the browser tab/touch icon. The exact supplied PNG is retained as `kwentohabi-logo-woven-source.png`; the editable color mask is `kwentohabi-logo-warm.svg`. The image has no CSS background.
 
 ## Run locally
 
@@ -12,9 +14,31 @@ if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
 npm run dev
 ```
 
-Open http://localhost:3000. First-run setup creates the school and teacher account. Use a password of at least 12 characters. Separate fictional sample accounts receive random passwords shown once; save those privately. Add actual learners through **Teacher review > Manage classroom accounts** rather than treating fictional sample accounts as real student records. Every user can change their password under **Account**. Teachers can reset assigned students' passwords and clear their failed-login lock; resets revoke that student's other sessions.
+Open http://localhost:3000. First-run setup creates the school and teacher account. Use a password of at least 12 characters. Separate fictional sample accounts receive random passwords shown once; save those privately. Actual learners can use **Create account** with a school-issued join code, or teachers can add them under **Teacher review > Manage classroom accounts**. Fictional sample accounts are separate from actual student records. Every user can change their password under **Profile settings > Security**. Teachers can reset assigned students' passwords and clear their failed-login lock; resets revoke that student's other sessions.
+
+At sign-in, choose **Teacher** or **Student** from **Sign in as**, then enter that account's username or email identifier and password. The selected role must match the account's saved role; a mismatch prompts the user to choose the correct role. Successful sign-in opens the matching teacher/student home. First school setup creates a teacher account and does not show the student sign-in selector. Role selection resets on sign-out. Language/theme controls remain available after sign-in. API clients must include `role: "teacher"` or `role: "student"` with username/password in `POST /api/login`.
+
+`npm run dev` watches the backend source and restarts it when server code changes, so newly added API routes become available during development. A server started with the older command must be restarted once to enter watch mode.
 
 The server binds to `127.0.0.1` by default. Complete setup before allowing network access. On Windows, stop a development process before running `npm ci` if native build-library files are locked. Existing `.env.local` settings and credentials should be preserved.
+
+## Create an account and invite class members
+
+The login page includes **Create account** for people who do not yet have an account. Choose Student or Teacher, enter a full name and a unique username or email address, paste a school join code, choose/confirm a password of at least 12 characters, and acknowledge the privacy notice. Successful registration signs the user in and opens the matching role home. **Back to sign in** returns to the existing login form. No password is stored in browser storage. The identifier field accepts an ordinary email address (up to 254 characters) or the existing 3–80 character username format. It trims outer whitespace and compares identifiers without case sensitivity. Sign in with the same username or email used when creating the account. This is one chosen login identifier, not two separate account fields; entering an email does not send a verification message or verify mailbox ownership.
+
+Teachers generate codes under **Teacher review > Manage classroom accounts > Join codes** for the currently selected class. Student codes admit 1–100 accounts (default 30); teacher codes admit one teacher with access to that class's submissions and learner records. Codes expire after seven days and can be revoked. Copy the code before closing: plaintext codes are shown only at creation; the server retains their hashes and usage metadata. Share them with the intended class members. A code's role must match the registration selection, and its class determines the new account's membership.
+
+New students are actual accounts, with school authorization pending. The privacy acknowledgment does not record guardian authorization or automatically enroll a learner into someone else's story group. Teachers add new students to shared assignments; learners can create their own private story. First school setup still creates the initial teacher account before join-code registration becomes available. School onboarding remains limited to the configured school's practice classes; general multi-school/class administration remains rollout work.
+
+The registration API is `POST /api/register` with `name`, `username`, `password`, `confirmPassword`, `role`, `inviteCode`, and `privacyAccepted: true`. Assigned teachers manage codes through `GET/POST /api/invitations` and `POST /api/invitations/:id/revoke`. Registration limits public attempts per address; duplicate usernames, expired/revoked/exhausted codes, mismatched roles and unauthorized class changes do not consume a code. The server sets the actual role/class from the code, stores a password hash and privacy-notice version, and persists code usage and the new account together.
+
+## Profile and appearance
+
+Click your profile picture (or initials) in the **top-right corner** to open the profile menu, then choose **Profile settings**. Teachers and students can edit their display name, upload/remove a picture, and access password settings. Save applies profile changes to the account and retains them across sessions. Picture uploads accept PNG/JPEG/WebP up to 5 MB; the browser creates a compact square image. Pictures are returned only to their owner, not to classmates' roster responses. School roles and class membership remain school-managed.
+
+The profile menu includes a **Dark mode** switch. **Profile settings > Appearance** also offers Light and Dark buttons. Theme controls are available after sign-in; the login page uses the current theme without showing a switch. The initial theme follows the device preference until you choose one. The browser remembers the choice across reloads/sign-out and synchronizes it across its open tabs. A stored choice takes priority over later device-theme changes. Theme settings apply to this browser, while name/picture settings are saved with the account.
+
+Both themes follow the current logo: light mode uses cream paper, honey-gold controls, orange accents and warm brown text; dark mode uses deep cocoa surfaces, golden controls and cream text. Woven decorations, navigation, cards, dialogs, forms, progress bars and browser theme colors share the palette in `src/index.css`. Success and safety-review states retain distinct labeled colors.
 
 ## Writing and review
 
@@ -42,9 +66,9 @@ Without valid AI evaluation, reports use the selected criteria and actual readin
 
 ## Privacy, guardian records, and fictional demonstration
 
-**Privacy & guardian notice** is available at sign-in and under Account/Help. Teachers record each actual learner's school decision and an internal consent/notice reference in the roster. Pending/declined records prevent provider requests for that learner's work; automatic local checking and teacher-led review remain available. Recorded/not-required statuses document the school's assertion, not an automatically verified legal determination. The app does not contact guardians or send counselor referrals. Schools must conduct their actual notice/consent and safeguarding process outside this recordkeeping feature.
+**Privacy & guardian notice** is available at sign-in and in the profile menu and Help. Teachers record each actual learner's school decision and an internal consent/notice reference in the roster. Pending/declined records prevent provider requests for that learner's work; automatic local checking and teacher-led review remain available. Recorded/not-required statuses document the school's assertion, not an automatically verified legal determination. The app does not contact guardians or send counselor referrals. Schools must conduct their actual notice/consent and safeguarding process outside this recordkeeping feature.
 
-Shared-device drafts remain readable through browser storage tools. Account offers **Clear my local drafts on sign-out**; downloading a copy and clearing the browser are also available. Private stories are restricted to their author/teacher. Shared story membership is enforced on the server. Moderation cues are restricted to the teacher and affected author.
+Shared-device drafts remain readable through browser storage tools. The profile menu offers **Clear my local drafts on sign-out**; downloading a copy and clearing the browser are also available. Private stories are restricted to their author/teacher. Shared story membership is enforced on the server. Moderation cues are restricted to the teacher and affected author.
 
 Teachers can choose **Open fictional demo** to add **Ang Huling Habi**, an original Filipino-inspired example with source-linked profiles and planted continuity differences. It does not overwrite existing assignments. Sample accounts, story content, and illustrative feedback are labeled fictional; they are not research findings or actual student performance.
 

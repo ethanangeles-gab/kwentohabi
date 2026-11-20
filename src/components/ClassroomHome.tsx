@@ -378,7 +378,7 @@ export function ClassroomHome({
                   className="h-1.5 bg-slate-100 rounded"
                 >
                   <div
-                    className="h-full rounded bg-teal-700"
+                    className="h-full rounded progress-fill"
                     style={{
                       width: `${(submitted / Math.max(1, story.memberIds.length)) * 100}%`,
                     }}

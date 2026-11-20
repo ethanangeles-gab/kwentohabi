@@ -484,11 +484,11 @@ export function StudentCanvas({
       <aside
         className={`space-y-4 min-w-0 xl:sticky xl:top-4 ${focusMode ? "hidden" : ""}`}
       >
-        <div className="card bg-slate-900 text-white space-y-3">
+        <div className="card continuity-review space-y-3">
           <h3 className="font-bold text-lg">
             {t("Pagsusuri ng continuity", "Continuity review")}
           </h3>
-          <p className="text-sm text-slate-300">
+          <p className="text-sm review-hint">
             {story.checkMethod === "gemini"
               ? t("Huling pagsusuri: AI", "Last check: AI")
               : story.checkMethod === "unchecked"
@@ -499,7 +499,7 @@ export function StudentCanvas({
                   )}
           </p>
           <button
-            className="btn bg-amber-500 text-slate-950 w-full"
+            className="btn w-full"
             onClick={() => onRunCheck(useAI)}
             disabled={checking || saving || story.chapters.length === 0}
           >
@@ -507,7 +507,7 @@ export function StudentCanvas({
               ? t("Sinusuri…", "Checking…")
               : t("Suriin ang kasalukuyang draft", "Check current draft")}
           </button>
-          <p className="text-xs text-slate-300">
+          <p className="text-xs review-hint">
             {t(
               "Maaaring may hindi matukoy na salungatan o sensitibong nilalaman. Kailangan ang pagrepaso ng guro.",
               "Undetected conflicts or sensitive passages may remain. Teacher review is required.",

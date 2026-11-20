@@ -2,6 +2,8 @@ import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
 import type { SessionUser, StoryWorkspace, RubricStandard } from "./types";
 import { api, ApiError, useDraft, clearAccountDrafts } from "./utils/client";
 import { Dialog } from "./components/Dialog";
+import { BrandLogo } from "./components/BrandLogo";
+import { RegistrationForm } from "./components/RegistrationForm";
 import { ClassroomHome } from "./components/ClassroomHome";
 import { PrivacyNotice } from "./components/PrivacyNotice";
 import {
@@ -12,7 +14,9 @@ import {
   House,
   Menu,
 } from "lucide-react";
-import { PasswordControl } from "./components/AccountControls";
+import { ProfileMenu } from "./components/ProfileMenu";
+import { useTheme } from "./utils/theme";
+import { ACCOUNT_IDENTIFIER_MAX_LENGTH } from "./utils/accountIdentifier";
 import { StudentCanvas } from "./components/StudentCanvas";
 import { StoryWiki } from "./components/StoryWiki";
 import { TeacherDashboard } from "./components/TeacherDashboard";
@@ -33,9 +37,12 @@ type Workspace = {
 type Tab = "hub" | "canvas" | "wiki" | "teacher" | "archive" | "bmc";
 
 export default function App() {
+  const { theme, chooseTheme, persisted: themePersisted } = useTheme();
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [needsSetup, setNeedsSetup] = useState(false),
     [loading, setLoading] = useState(true);
+  const [authView, setAuthView] = useState<"login" | "register">("login");
+  const [loginRole, setLoginRole] = useState<"" | "teacher" | "student">("");
   const [lang, setLang] = useDraft<"tl" | "en">("kwentohabi-language", "tl");
   const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
   const [tab, setTab] = useState<Tab>("hub"),
@@ -236,6 +243,7 @@ export default function App() {
         }
       readSequence.current++;
       setWorkspace(null);
+      setLoginRole("");
       setTab("hub");
       setSelectedId("");
     } catch (e: any) {
@@ -252,8 +260,9 @@ export default function App() {
     return (
       <div className="min-h-screen auth-shell p-4 sm:p-10">
         <div className="max-w-md mx-auto card space-y-5">
-          <div className="habi-thread-bar rounded" />
-          <h1 className="text-3xl font-bold font-serif">KwentoHabi</h1>
+          <h1 className="login-brand">
+            <BrandLogo />
+          </h1>
           <p className="eyebrow">
             {needsSetup
               ? t(
@@ -268,95 +277,200 @@ export default function App() {
               "Students write. Teachers guide. Evidence helps every story hold together.",
             )}
           </p>
-          <p>
-            {needsSetup
-              ? t(
-                  "Ihanda ang pribadong workspace ng paaralan.",
-                  "Set up your private school workspace.",
-                )
-              : t(
-                  "Mag-sign in sa account ng iyong klase.",
-                  "Sign in to your classroom account.",
-                )}
-          </p>
-          <form
-            className="space-y-4"
-            onSubmit={async (e) => {
-              e.preventDefault();
-              const data = new FormData(e.currentTarget);
-              setError("");
-              setSaving(true);
-              try {
-                const result = await api(
-                  needsSetup ? "/api/setup" : "/api/login",
-                  {
-                    school: data.get("school"),
-                    username: data.get("username"),
-                    password: data.get("password"),
-                  },
+          {authView === "register" && !needsSetup ? (
+            <RegistrationForm
+              lang={lang}
+              initialRole={loginRole}
+              onBack={() => {
+                setAuthView("login");
+                setError("");
+              }}
+              onRegistered={async (user) => {
+                setSaving(true);
+                setAuthView("login");
+                setLoginRole(user.role);
+                setError("");
+                setNotice(
+                  t(
+                    "Maligayang pagdating! Nagawa na ang iyong account.",
+                    "Welcome! Your account is ready.",
+                  ),
                 );
-                if (result.accounts) setCredentials(result.accounts);
-                setNeedsSetup(false);
-                await refresh();
-              } catch (e: any) {
-                setError(e.message);
-              } finally {
-                setSaving(false);
-              }
-            }}
-          >
-            {needsSetup && (
-              <label className="field">
-                {t("Paaralan", "School")}
-                <input name="school" required maxLength={200} />
-              </label>
-            )}
-            <label className="field">
-              {t("Username ng guro / mag-aaral", "Teacher / student username")}
-              <input
-                name="username"
-                autoComplete="username"
-                required
-                maxLength={80}
-              />
-            </label>
-            <label className="field">
-              {t("Password", "Password")}
-              <input
-                type="password"
-                name="password"
-                required
-                minLength={needsSetup ? 12 : 1}
-                maxLength={128}
-                autoComplete={needsSetup ? "new-password" : "current-password"}
-              />
-            </label>
-            {needsSetup && (
-              <p className="text-sm text-slate-500">
-                {t(
-                  "Hindi bababa sa 12 karakter. Bubuo ng magkakahiwalay na account para sa mga sample na mag-aaral.",
-                  "Use at least 12 characters. Separate sample student accounts will be generated.",
-                )}
+                try {
+                  await refresh();
+                } catch (e: any) {
+                  setError(
+                    t(
+                      "Nagawa ang account. Mag-sign in upang magpatuloy. ",
+                      "Your account was created. Sign in to continue. ",
+                    ) + e.message,
+                  );
+                } finally {
+                  setSaving(false);
+                }
+              }}
+            />
+          ) : (
+            <>
+              <p>
+                {needsSetup
+                  ? t(
+                      "Ihanda ang pribadong workspace ng paaralan.",
+                      "Set up your private school workspace.",
+                    )
+                  : t(
+                      "Mag-sign in sa account ng iyong klase.",
+                      "Sign in to your classroom account.",
+                    )}
               </p>
-            )}
-            <button className="btn w-full" disabled={saving}>
-              {needsSetup
-                ? t("Ihanda ang paaralan", "Set up school")
-                : t("Mag-sign in", "Sign in")}
-            </button>
-          </form>
-          {error && (
-            <p role="alert" className="error">
-              {error}
-            </p>
+              <form
+                className="space-y-4"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  const data = new FormData(e.currentTarget);
+                  setError("");
+                  setSaving(true);
+                  try {
+                    const result = await api(
+                      needsSetup ? "/api/setup" : "/api/login",
+                      {
+                        school: data.get("school"),
+                        username: data.get("username"),
+                        password: data.get("password"),
+                        ...(!needsSetup ? { role: loginRole } : {}),
+                      },
+                    );
+                    if (result.accounts) setCredentials(result.accounts);
+                    setNeedsSetup(false);
+                    await refresh();
+                  } catch (e: any) {
+                    setError(e.message);
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+              >
+                {needsSetup && (
+                  <label className="field">
+                    {t("Paaralan", "School")}
+                    <input name="school" required maxLength={200} />
+                  </label>
+                )}
+                {!needsSetup && (
+                  <div className="space-y-2">
+                    <label className="field">
+                      {t("Mag-sign in bilang", "Sign in as")}
+                      <select
+                        name="role"
+                        value={loginRole}
+                        required
+                        disabled={saving}
+                        aria-describedby="login-role-help"
+                        onChange={(event) => {
+                          setLoginRole(
+                            event.target.value as "" | "teacher" | "student",
+                          );
+                          setError("");
+                        }}
+                      >
+                        <option value="" disabled>
+                          {t("Pumili ng tungkulin", "Choose a role")}
+                        </option>
+                        <option value="teacher">{t("Guro", "Teacher")}</option>
+                        <option value="student">
+                          {t("Mag-aaral", "Student")}
+                        </option>
+                      </select>
+                    </label>
+                    <p id="login-role-help" className="text-sm text-slate-500">
+                      {loginRole === "teacher"
+                        ? t(
+                            "Gamitin ang iyong account bilang guro.",
+                            "Use your teacher account.",
+                          )
+                        : loginRole === "student"
+                          ? t(
+                              "Gamitin ang account na ibinigay ng iyong guro.",
+                              "Use the student account provided by your teacher.",
+                            )
+                          : t(
+                              "Piliin ang uri ng account bago mag-sign in.",
+                              "Select your account type before signing in.",
+                            )}
+                    </p>
+                  </div>
+                )}
+                <label className="field">
+                  {needsSetup
+                    ? t("Username / Email ng guro", "Teacher username / Email")
+                    : "Username / Email"}
+                  <input
+                    name="username"
+                    autoComplete="username"
+                    required
+                    maxLength={ACCOUNT_IDENTIFIER_MAX_LENGTH}
+                    autoCapitalize="none"
+                    autoCorrect="off"
+                    spellCheck={false}
+                  />
+                </label>
+                <label className="field">
+                  {t("Password", "Password")}
+                  <input
+                    type="password"
+                    name="password"
+                    required
+                    minLength={needsSetup ? 12 : 1}
+                    maxLength={128}
+                    autoComplete={
+                      needsSetup ? "new-password" : "current-password"
+                    }
+                  />
+                </label>
+                {needsSetup && (
+                  <p className="text-sm text-slate-500">
+                    {t(
+                      "Hindi bababa sa 12 karakter. Bubuo ng magkakahiwalay na account para sa mga sample na mag-aaral.",
+                      "Use at least 12 characters. Separate sample student accounts will be generated.",
+                    )}
+                  </p>
+                )}
+                <button
+                  className="btn w-full"
+                  disabled={saving || (!needsSetup && !loginRole)}
+                >
+                  {needsSetup
+                    ? t("Ihanda ang paaralan", "Set up school")
+                    : t("Mag-sign in", "Sign in")}
+                </button>
+              </form>
+              {error && (
+                <p role="alert" className="error">
+                  {error}
+                </p>
+              )}
+              {!needsSetup && (
+                <div className="space-y-2 text-center">
+                  <p className="text-sm text-slate-600">
+                    {t("Wala ka pang account?", "Don't have an account yet?")}
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-light w-full"
+                    disabled={saving}
+                    onClick={() => {
+                      setAuthView("register");
+                      setError("");
+                      setNotice("");
+                    }}
+                  >
+                    {t("Gumawa ng account", "Create account")}
+                  </button>
+                </div>
+              )}
+              <PrivacyNotice lang={lang} compact />
+            </>
           )}
-          <button
-            className="btn-light"
-            onClick={() => setLang(lang === "tl" ? "en" : "tl")}
-          >
-            {lang === "tl" ? "English" : "Filipino"}
-          </button>
-          <PrivacyNotice lang={lang} compact />
         </div>
       </div>
     );
@@ -375,46 +489,52 @@ export default function App() {
       <header className="bg-white border-b border-slate-200">
         <div className="habi-thread-bar" />
         <div className="workspace-width py-4 space-y-4">
-          <div className="flex flex-wrap justify-between items-center gap-3">
-            <div>
-              <h1 className="font-serif text-2xl font-bold">KwentoHabi</h1>
-              <p className="text-xs text-slate-500">
-                {workspace.school} · {workspace.user.name} ·{" "}
-                {teacher ? t("Guro", "Teacher") : t("Mag-aaral", "Student")}
-              </p>
+          <div className="flex justify-between items-start gap-3">
+            <div className="min-w-0 flex-1">
+              <h1 className="header-brand">
+                <BrandLogo compact />
+              </h1>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <button
                 className="btn-light"
                 onClick={() => setLang(lang === "tl" ? "en" : "tl")}
               >
                 {lang === "tl" ? "English" : "Filipino"}
               </button>
-              <details className="relative">
-                <summary className="btn-light cursor-pointer">
-                  {t("Account", "Account")}
-                </summary>
-                <div className="secondary-menu">
-                  <PasswordControl lang={lang} />
-                  <PrivacyNotice lang={lang} />
-                  <label className="flex items-start gap-2 text-sm p-2">
-                    <input
-                      type="checkbox"
-                      checked={clearDrafts}
-                      onChange={(e) => setClearDrafts(e.target.checked)}
-                    />
-                    {t(
-                      "Linisin ang sariling draft sa pag-sign out (shared device).",
-                      "Clear my local drafts on sign-out (shared device).",
-                    )}
-                  </label>
-                  <button className="btn-light" onClick={signOut}>
-                    {t("Mag-sign out", "Sign out")}
-                  </button>
-                </div>
-              </details>
+              <ProfileMenu
+                user={workspace.user}
+                school={workspace.school}
+                lang={lang}
+                theme={theme}
+                onThemeChange={chooseTheme}
+                themePersisted={themePersisted}
+                clearDrafts={clearDrafts}
+                onClearDrafts={setClearDrafts}
+                onSignOut={signOut}
+                onSaved={(user) => {
+                  readSequence.current++;
+                  setWorkspace((value) =>
+                    value?.user.id === user.id
+                      ? {
+                          ...value,
+                          user,
+                          users: value.users.map((entry) =>
+                            entry.id === user.id
+                              ? { ...entry, name: user.name }
+                              : entry,
+                          ),
+                        }
+                      : value,
+                  );
+                }}
+              />
             </div>
           </div>
+          <p className="text-xs text-slate-500">
+            {workspace.school} · {workspace.user.name} ·{" "}
+            {teacher ? t("Guro", "Teacher") : t("Mag-aaral", "Student")}
+          </p>
           <div className="flex flex-wrap gap-3 items-end">
             <label className="field flex-1 min-w-0 sm:max-w-2xl">
               {t("Aktibong kuwento", "Active story")}
@@ -537,7 +657,9 @@ export default function App() {
           </p>
         )}
         {workspace.user.role === "student" &&
-          ['pending','declined'].includes(workspace.user.consentStatus || '') && (
+          ["pending", "declined"].includes(
+            workspace.user.consentStatus || "",
+          ) && (
             <p className="notice">
               {t(
                 "Hindi aktibo ang tala ng pahintulot ng paaralan. Lokal lamang ang pagsusuri hanggang maitala ang angkop na pasya.",

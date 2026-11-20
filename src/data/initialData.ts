@@ -15,30 +15,30 @@ export const AUTHORS: Record<string, StudentAuthor> = {
     id: 'jose',
     name: 'Jose Reyes',
     firstName: 'Jose',
-    avatarColor: '#1d4ed8', // indigo
-    badgeBg: 'bg-blue-50 text-blue-800 border-blue-200',
-    badgeText: 'text-blue-700',
-    borderCol: 'border-blue-500',
+    avatarColor: '#b31b2d', // woven red
+    badgeBg: 'bg-red-50 text-red-800 border-red-200',
+    badgeText: 'text-red-700',
+    borderCol: 'border-red-500',
     role: 'Plot & Dialogue Weaver'
   },
   ana: {
     id: 'ana',
     name: 'Ana Cruz',
     firstName: 'Ana',
-    avatarColor: '#7e22ce', // purple
-    badgeBg: 'bg-purple-50 text-purple-800 border-purple-200',
-    badgeText: 'text-purple-700',
-    borderCol: 'border-purple-500',
+    avatarColor: '#a66b10', // warm gold
+    badgeBg: 'bg-amber-50 text-amber-800 border-amber-200',
+    badgeText: 'text-amber-700',
+    borderCol: 'border-amber-500',
     role: 'Setting & Climax Writer'
   },
   ethan: {
     id: 'ethan',
     name: 'Ethan Gabriel Angeles',
     firstName: 'Ethan',
-    avatarColor: '#059669', // jade
-    badgeBg: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    badgeText: 'text-emerald-700',
-    borderCol: 'border-emerald-500',
+    avatarColor: '#9e3445', // muted woven red
+    badgeBg: 'bg-rose-50 text-rose-800 border-rose-200',
+    badgeText: 'text-rose-700',
+    borderCol: 'border-rose-500',
     role: 'Character Development'
   },
   sophia: {
@@ -196,7 +196,7 @@ export const BMC_BLOCKS = [
     title: 'Customer Segments',
     titleTl: 'Mga Segment ng Customer',
     icon: 'Users',
-    color: 'border-blue-500 bg-blue-50/50',
+    color: 'border-orange-500 bg-orange-50/50',
     bullets: [
       'Filipino students and youth (Junior and Senior High School, College creative writing classes)',
       'Teachers and writing club advisers',
@@ -237,7 +237,7 @@ export const BMC_BLOCKS = [
     title: 'Channels',
     titleTl: 'Mga Daluyan',
     icon: 'Compass',
-    color: 'border-emerald-500 bg-emerald-50/50',
+    color: 'border-amber-500 bg-amber-50/50',
     bullets: [
       'Schools, universities, and DepEd-aligned programs',
       'Writing club advisers and educator communities',
@@ -251,7 +251,7 @@ export const BMC_BLOCKS = [
     title: 'Revenue Streams',
     titleTl: 'Pinagkukunan ng Kita',
     icon: 'Coins',
-    color: 'border-teal-500 bg-teal-50/50',
+    color: 'border-orange-500 bg-orange-50/50',
     bullets: [
       'Planned institutional licensing: assumed ₱50-100 per student/year; pricing requires validation',
       'Marketplace fees on teacher-contributed materials and exemplars',
@@ -264,7 +264,7 @@ export const BMC_BLOCKS = [
     title: 'Key Resources',
     titleTl: 'Mahahalagang Yaman',
     icon: 'Cpu',
-    color: 'border-indigo-500 bg-indigo-50/50',
+    color: 'border-red-500 bg-red-50/50',
     bullets: [
       'Curriculum-aligned feedback framework (DepEd creative writing standards)',
       'AI continuity-checking engine with fact attribution and semantic logic gates',
@@ -278,7 +278,7 @@ export const BMC_BLOCKS = [
     title: 'Key Activities',
     titleTl: 'Mahahalagang Gawain',
     icon: 'CheckSquare',
-    color: 'border-purple-500 bg-purple-50/50',
+    color: 'border-amber-500 bg-amber-50/50',
     bullets: [
       'Curriculum development and teacher onboarding outreach',
       'App development and prompt engineering (reconciliation & collision engine)',
@@ -292,7 +292,7 @@ export const BMC_BLOCKS = [
     title: 'Key Partners',
     titleTl: 'Mahahalagang Katuwang',
     icon: 'Building2',
-    color: 'border-cyan-500 bg-cyan-50/50',
+    color: 'border-orange-500 bg-orange-50/50',
     bullets: [
       'DepEd-aligned schools and universities (UST, public high schools)',
       'Cloud hosting providers (Google Cloud / AWS)',

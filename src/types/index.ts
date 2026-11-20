@@ -158,6 +158,7 @@ export interface RubricStandard {
 export interface SessionUser {
   id: string;
   name: string;
+  avatarDataUrl?: string;
   role: "teacher" | "student";
   classIds: string[];
   isDemo?: boolean;

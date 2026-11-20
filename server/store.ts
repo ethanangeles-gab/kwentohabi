@@ -56,7 +56,23 @@ export function passwordMatches(password: string, hash: string) {
 }
 export const tokenHash = (v: string) =>
   createHash("sha256").update(v).digest("hex");
-export type UserRecord = SessionUser & { username: string; hash: string };
+export type UserRecord = SessionUser & {
+  username: string;
+  hash: string;
+  registration?: { inviteId?: string; at: string; noticeVersion: string };
+};
+export interface InvitationRecord {
+  id: string;
+  classId: string;
+  role: "teacher" | "student";
+  createdBy: string;
+  createdAt: string;
+  expiresAt: string;
+  maxUses: number;
+  uses: number;
+  revokedAt?: string;
+  revokedBy?: string;
+}
 export interface Database {
   schema: number;
   school: string;
@@ -67,6 +83,7 @@ export interface Database {
   sessions: Record<string, { userId: string; expires: number }>;
   consents: Record<string, ConsentRecord>;
   history: Record<string, ChapterRevision[]>;
+  invitations: Record<string, InvitationRecord>;
 }
 const filename = path.join(
   path.resolve(process.env.DATA_DIR || "data"),
@@ -110,9 +127,11 @@ export const db: Database = fs.existsSync(filename)
       sessions: {},
       consents: {},
       history: {},
+      invitations: {},
     };
 db.consents ??= {};
 db.history ??= {};
+db.invitations ??= {};
 for (const story of db.stories) {
   story.evaluations ??= {};
   story.wikiEntries ??= [];
@@ -145,6 +164,11 @@ export const publicUser = (u: UserRecord): SessionUser => ({
     u.role === "student"
       ? db.consents[u.id]?.status || (u.isDemo ? "not-required" : "pending")
       : undefined,
+});
+// Photos are returned only to their owner, not duplicated in the class roster.
+export const publicSelf = (u: UserRecord): SessionUser => ({
+  ...publicUser(u),
+  ...(u.avatarDataUrl ? { avatarDataUrl: u.avatarDataUrl } : {}),
 });
 export function setup(school: string, username: string, password: string) {
   if (db.users.length) fail(409, "This school is already configured. Sign in.");

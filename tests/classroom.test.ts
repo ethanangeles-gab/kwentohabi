@@ -32,6 +32,7 @@ test(
       assert.equal(
         (
           await request("/api/login", {
+            role: "student",
             username: name,
             password: password(name),
           })
@@ -42,6 +43,7 @@ test(
       assert.equal(
         (
           await teacher("/api/login", {
+            role: "teacher",
             username: "qa-teacher",
             password: "round-two-password",
           })
@@ -396,6 +398,7 @@ test(
       assert.equal(
         (
           await client(f.url)("/api/login", {
+            role: "student",
             username: "maria",
             password: "incorrect",
           })
@@ -405,6 +408,7 @@ test(
     assert.equal(
       (
         await client(f.url)("/api/login", {
+          role: "student",
           username: "maria",
           password: password("maria"),
         })
@@ -414,6 +418,7 @@ test(
     assert.equal(
       (
         await client(f.url)("/api/login", {
+          role: "student",
           username: "jose",
           password: password("jose"),
         })
@@ -425,6 +430,7 @@ test(
     assert.equal(
       (
         await client(f.url)("/api/login", {
+          role: "student",
           username: reset.data.username,
           password: reset.data.password,
         })
@@ -473,6 +479,7 @@ test(
     assert.equal(
       (
         await teacher("/api/login", {
+          role: "teacher",
           username: "qa-teacher",
           password: "round-two-password",
         })
