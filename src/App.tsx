@@ -1,526 +1,890 @@
-import React, { useState, useEffect } from 'react';
-import { Header } from './components/Header';
-import { StudentCanvas } from './components/StudentCanvas';
-import { StoryWiki } from './components/StoryWiki';
-import { TeacherDashboard } from './components/TeacherDashboard';
-import { MaterialsArchive } from './components/MaterialsArchive';
-import { BmcAndDefense } from './components/BmcAndDefense';
-import { 
-  INITIAL_STORIES, 
-  INITIAL_CONTRADICTIONS, 
-  INITIAL_FLAGS, 
-  INITIAL_RUBRICS,
-  AUTHORS 
-} from './data/initialData';
-import { ClassroomHub } from './components/ClassroomHub';
-import { Chapter, Contradiction, Resolution, SafetyFlag, StoryFact, ResolutionLogEntry, RubricStandard } from './types';
+import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
+import type { SessionUser, StoryWorkspace, RubricStandard } from "./types";
+import { api, ApiError, useDraft, clearAccountDrafts } from "./utils/client";
+import { Dialog } from "./components/Dialog";
+import { ClassroomHome } from "./components/ClassroomHome";
+import { PrivacyNotice } from "./components/PrivacyNotice";
+import {
+  BookOpen,
+  PencilLine,
+  ClipboardCheck,
+  Library,
+  House,
+  Menu,
+} from "lucide-react";
+import { PasswordControl } from "./components/AccountControls";
+import { StudentCanvas } from "./components/StudentCanvas";
+import { StoryWiki } from "./components/StoryWiki";
+import { TeacherDashboard } from "./components/TeacherDashboard";
+import { MaterialsArchive } from "./components/MaterialsArchive";
+const BmcAndDefense = lazy(() =>
+  import("./components/BmcAndDefense").then((m) => ({
+    default: m.BmcAndDefense,
+  })),
+);
+type Workspace = {
+  school: string;
+  user: SessionUser;
+  users: SessionUser[];
+  stories: StoryWorkspace[];
+  rubrics: RubricStandard[];
+  usage: { remaining: number; limit: number; month: string };
+};
+type Tab = "hub" | "canvas" | "wiki" | "teacher" | "archive" | "bmc";
 
 export default function App() {
-  const [stories, setStories] = useState(INITIAL_STORIES);
-  const [selectedStoryId, setSelectedStoryId] = useState(INITIAL_STORIES[0].id);
-  const [currentTab, setCurrentTab] = useState<'hub' | 'canvas' | 'wiki' | 'teacher' | 'archive' | 'bmc'>('hub');
-  const [lang, setLang] = useState<'tl' | 'en'>('tl');
-  
-  // Active story and chapters
-  const currentStory = stories.find(s => s.id === selectedStoryId) || stories[0];
-  const chapters = currentStory.chapters;
-
-  // Contradictions and resolutions
-  const [contradictions, setContradictions] = useState<Contradiction[]>(INITIAL_CONTRADICTIONS);
-  const [resolutions, setResolutions] = useState<Record<string, Resolution>>({});
-  const [safetyFlags, setSafetyFlags] = useState<SafetyFlag[]>(INITIAL_FLAGS);
-  const [contentLevel, setContentLevel] = useState<'strict' | 'moderate' | 'literature'>('strict');
-  
-  // Story Wiki facts
-  const [facts, setFacts] = useState<StoryFact[]>([
-    { id: 'f1', subject: 'Lia', attribute: 'eye color', value: 'brown', authorId: 'maria', chapterId: 'c1', quote: "Lia's eyes were brown.", status: 'contested' },
-    { id: 'f2', subject: 'Lia', attribute: 'eye color', value: 'green', authorId: 'jose', chapterId: 'c2', quote: "Lia's green eyes caught the light", status: 'contested' },
-    { id: 'f3', subject: 'Lia', attribute: 'hometown', value: 'Batangas', authorId: 'maria', chapterId: 'c1', quote: "Lia lived in a small fishing village in Batangas.", status: 'contested' },
-    { id: 'f4', subject: 'Lia', attribute: 'hometown', value: 'Quezon', authorId: 'jose', chapterId: 'c2', quote: "Lia lived in Quezon, where the road to the sea was long and dusty.", status: 'contested' },
-    { id: 'f5', subject: 'Lia', attribute: 'siblings', value: 'two brothers', authorId: 'maria', chapterId: 'c1', quote: "Lia had two brothers who laughed at everything she said.", status: 'contested' },
-    { id: 'f6', subject: 'Lia', attribute: 'siblings', value: 'only child', authorId: 'jose', chapterId: 'c2', quote: "Lia was an only child", status: 'contested' },
-    { id: 'f7', subject: 'Father', attribute: 'possession', value: 'woven net', authorId: 'maria', chapterId: 'c1', quote: "she carried her father's net down to the shore", status: 'canon' },
-    { id: 'f8', subject: 'Father', attribute: 'possession', value: 'woven hat', authorId: 'ana', chapterId: 'c3', quote: "She clutched her father's woven hat tightly", status: 'canon' },
-  ]);
-  const [storySummary, setStorySummary] = useState(
-    'Si Lia ay isang batang lumalaki sa pamayanang mangingisda. Hinaharap ng kanyang komunidad ang mga hamon ng dagat, bagyo, at ugnayan ng pamilya.'
-  );
-
-  // Materials & Rubrics
-  const [rubrics, setRubrics] = useState<RubricStandard[]>(INITIAL_RUBRICS);
-  const [selectedRubricId, setSelectedRubricId] = useState(INITIAL_RUBRICS[0].id);
-
-  // Resolution logs
-  const [resolutionLogs, setResolutionLogs] = useState<ResolutionLogEntry[]>([
-    {
-      id: 'log-0',
-      at: '2026-11-05T17:00:00+08:00',
-      type: 'Ingestion Init',
-      text: 'DepEd Grade 9-10 Creative Writing Competency Rubric ingested into KwentoHabi continuity engine.'
-    }
-  ]);
-
-  // AI status & check progress
-  const [isChecking, setIsChecking] = useState(false);
-  const [checkMethod, setCheckMethod] = useState<'gemini' | 'semantic'>('gemini');
-  const [aiStatus, setAiStatus] = useState({ ready: true, hasKey: true });
-
-  // Modal for new story
-  const [showNewStoryModal, setShowNewStoryModal] = useState(false);
-  const [newStoryTitle, setNewStoryTitle] = useState('');
-  const [newStoryGenre, setNewStoryGenre] = useState('');
-
-  // Check health on mount
-  useEffect(() => {
-    fetch('/api/health')
-      .then(res => res.json())
-      .then(data => {
-        setAiStatus({ ready: true, hasKey: Boolean(data.hasGeminiApiKey) });
-        if (!data.hasGeminiApiKey) setCheckMethod('semantic');
-      })
-      .catch(() => {
-        setAiStatus({ ready: true, hasKey: false });
-        setCheckMethod('semantic');
-      });
-  }, []);
-
-  // Update existing chapter
-  const handleUpdateChapter = (chapterId: string, newText: string) => {
-    setStories(prev => prev.map(s => {
-      if (s.id !== selectedStoryId) return s;
-      return {
-        ...s,
-        chapters: s.chapters.map(c => c.id === chapterId ? { ...c, text: newText } : c)
-      };
-    }));
-  };
-
-  // Add chapter to current story
-  const handleAddChapter = (authorId: string, title: string, text: string) => {
-    const newChap: Chapter = {
-      id: `c_${Date.now()}`,
-      authorId,
-      title,
-      text,
-      at: new Date().toISOString()
-    };
-
-    setStories(prev => prev.map(s => {
-      if (s.id !== selectedStoryId) return s;
-      return {
-        ...s,
-        chapters: [...s.chapters, newChap]
-      };
-    }));
-
-    // Add log
-    const author = AUTHORS[authorId]?.name || authorId;
-    setResolutionLogs(prev => [
-      {
-        id: `log-${Date.now()}`,
-        at: new Date().toISOString(),
-        type: 'New Chapter Added',
-        text: `${author} added "${title}". Checking for narrative continuity...`
-      },
-      ...prev
-    ]);
-  };
-
-  // Run Continuity Check via server endpoint
-  const handleRunCheck = async () => {
-    setIsChecking(true);
+  const [workspace, setWorkspace] = useState<Workspace | null>(null);
+  const [needsSetup, setNeedsSetup] = useState(false),
+    [loading, setLoading] = useState(true);
+  const [lang, setLang] = useDraft<"tl" | "en">("kwentohabi-language", "tl");
+  const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
+  const [tab, setTab] = useState<Tab>("hub"),
+    [selectedId, setSelectedId] = useState("");
+  const [error, setError] = useState(""),
+    [notice, setNotice] = useState(""),
+    [saving, setSaving] = useState(false);
+  const [checkingId, setCheckingId] = useState(""),
+    [connected, setConnected] = useState(false);
+  const [showNew, setShowNew] = useState(false),
+    [credentials, setCredentials] = useState<
+      { username: string; password: string }[]
+    >([]);
+  const [hasKey, setHasKey] = useState(false);
+  const [showHelp, setShowHelp] = useState(false),
+    [clearDrafts, setClearDrafts] = useState(false);
+  const userRef = useRef(workspace?.user.id);
+  userRef.current = workspace?.user.id;
+  const actionLock = useRef(false),
+    readSequence = useRef(0);
+  const current =
+    workspace?.stories.find((s) => s.id === selectedId) ||
+    workspace?.stories[0];
+  const currentRef = useRef(current);
+  currentRef.current = current;
+  const refresh = async () => {
+    const sequence = ++readSequence.current;
     try {
-      const activeRubric = rubrics.find(r => r.id === selectedRubricId);
-      const res = await fetch('/api/gemini/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chapters,
-          contentLevel,
-          rubric: activeRubric?.title || 'DepEd Creative Writing Standards'
-        })
-      });
-
-      const data = await res.json();
-      if (data.success && data.data) {
-        const result = data.data;
-
-        if (Array.isArray(result.contradictions)) {
-          setContradictions(result.contradictions);
-        }
-        if (Array.isArray(result.flags)) {
-          setSafetyFlags(result.flags.map((f: any) => ({
-            ...f,
-            key: `${f.chapter}|${f.quote}`
-          })));
-        }
-        if (Array.isArray(result.facts) && result.facts.length > 0) {
-          setFacts(result.facts.map((f: any, idx: number) => ({
-            id: `fact-${Date.now()}-${idx}`,
-            subject: f.subject,
-            attribute: f.attribute,
-            value: f.value,
-            authorId: f.author,
-            chapterId: f.chapter,
-            quote: f.quote,
-            status: 'contested'
-          })));
-        }
-        if (result.storyWikiSummary) {
-          setStorySummary(result.storyWikiSummary);
-        }
-
-        setCheckMethod(data.via === 'gemini' ? 'gemini' : 'semantic');
-
-        setResolutionLogs(prev => [
-          {
-            id: `log-${Date.now()}`,
-            at: new Date().toISOString(),
-            type: 'Continuity Checked',
-            text: `Scanned ${chapters.length} chapters. Found ${result.contradictions?.length || 0} contradictions across authors.`
-          },
-          ...prev
-        ]);
-      }
-    } catch (err) {
-      console.error('Error during continuity check:', err);
-    } finally {
-      setIsChecking(false);
+      const next = await api<Workspace>("/api/workspace");
+      if (
+        !next.user?.id ||
+        !Array.isArray(next.stories) ||
+        !Array.isArray(next.users) ||
+        !Array.isArray(next.rubrics) ||
+        !next.usage
+      )
+        throw Error("Invalid workspace response. Refresh to retry.");
+      if (sequence !== readSequence.current) return;
+      setWorkspace((previous) =>
+        previous?.user.id === next.user.id
+          ? {
+              ...next,
+              stories: next.stories.map((story) => {
+                const saved = previous.stories.find((s) => s.id === story.id);
+                return saved && saved.version > story.version ? saved : story;
+              }),
+            }
+          : next,
+      );
+      setConnected(true);
+    } catch (e: any) {
+      setConnected(false);
+      if (
+        e instanceof ApiError &&
+        e.status === 401 &&
+        sequence === readSequence.current
+      )
+        setWorkspace(null);
+      throw e;
     }
   };
-
-  // Handle student resolution
-  const handleResolve = (key: string, res: Resolution) => {
-    setResolutions(prev => ({ ...prev, [key]: res }));
-
-    setResolutionLogs(prev => [
-      {
-        id: `log-${Date.now()}`,
-        at: new Date().toISOString(),
-        type: res.type === 'merged' ? 'Contradiction Merged' : res.type === 'both' ? 'Creative Intentionality' : 'Escalated to Teacher',
-        text: res.summary
-      },
-      ...prev
-    ]);
-  };
-
-  // Handle teacher arbitration decision
-  const handleTeacherDecide = (key: string, choice: 'a' | 'b' | 'both') => {
-    const c = contradictions.find(item => item.key === key);
-    if (!c) return;
-
-    const authorA = AUTHORS[c.a.author]?.firstName || c.a.author;
-    const authorB = AUTHORS[c.b.author]?.firstName || c.b.author;
-
-    let summary = '';
-    let resolvedValue = '';
-
-    if (choice === 'both') {
-      summary = `Teacher decided: Keep both "${c.a.value}" and "${c.b.value}" as an intentional storytelling perspective shift.`;
-    } else {
-      const chosen = choice === 'a' ? c.a : c.b;
-      const who = choice === 'a' ? authorA : authorB;
-      resolvedValue = chosen.value;
-      summary = `Teacher arbitrated: Adopted "${chosen.value}" (${who}'s version) as the canonical truth for ${c.subject}'s ${c.attribute}.`;
-    }
-
-    setResolutions(prev => ({
-      ...prev,
-      [key]: {
-        key,
-        type: 'teacher-decided',
-        summary,
-        at: new Date().toISOString(),
-        resolvedValue
-      }
-    }));
-
-    setResolutionLogs(prev => [
-      {
-        id: `log-${Date.now()}`,
-        at: new Date().toISOString(),
-        type: 'Teacher Arbitration',
-        text: summary
-      },
-      ...prev
-    ]);
-  };
-
-  // Handle teacher safety flag decision
-  const handleDecideFlag = (key: string, decision: 'allow' | 'rework') => {
-    setSafetyFlags(prev => prev.map(f => f.key === key ? { ...f, decision } : f));
-    setResolutionLogs(prev => [
-      {
-        id: `log-${Date.now()}`,
-        at: new Date().toISOString(),
-        type: 'Safety Moderation',
-        text: `Teacher marked flagged passage as: ${decision === 'allow' ? 'Allowed as literature study' : 'Requested student rework'}.`
-      },
-      ...prev
-    ]);
-  };
-
-  // Handle new story world creation
-  const handleCreateNewStory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newStoryTitle.trim()) return;
-
-    const newStory = {
-      id: `story-${Date.now()}`,
-      title: newStoryTitle.trim(),
-      genre: newStoryGenre.trim() || 'Mitolohiya at Pantasya',
-      gradeLevel: 'Grade 9 - Seksyon Luna',
-      description: 'Bagong mundong kuwento na binuo ng grupo ng mga mag-aaral.',
-      chapters: [
-        {
-          id: `c_init_${Date.now()}`,
-          authorId: 'maria',
-          title: 'Kabanata 1: Ang Simula ng Paglalakbay',
-          at: new Date().toISOString(),
-          text: 'Sa lumang baryo ng San Isidro, natagpuan ng mga bata ang isang gintong susi sa ilalim ng ugat ng balete. Labing-dalawang taong gulang si Marco nang marinig niya ang bulong ng hangin.'
-        }
-      ]
-    };
-
-    setStories(prev => [...prev, newStory]);
-    setSelectedStoryId(newStory.id);
-    setShowNewStoryModal(false);
-    setNewStoryTitle('');
-    setNewStoryGenre('');
-    setContradictions([]);
-    setResolutions({});
-  };
-
-  const openCollisionsCount = contradictions.filter(
-    c => !resolutions[c.key] || resolutions[c.key].type === 'teacher'
-  ).length;
-
-  return (
-    <div className="min-h-screen bg-slate-100/70 text-slate-900 bg-habi-pattern pb-16">
-      {/* Top Header */}
-      <Header
-        currentTab={currentTab}
-        onSelectTab={(tab) => setCurrentTab(tab as any)}
-        lang={lang}
-        onToggleLang={() => setLang(l => l === 'tl' ? 'en' : 'tl')}
-        stories={stories}
-        selectedStoryId={selectedStoryId}
-        onSelectStory={(id) => {
-          setSelectedStoryId(id);
-          // if switching to Makiling, set its corresponding contradictions
-          if (id === 'story-makiling') {
-            setContradictions([
-              {
-                key: 'samuel|age',
-                subject: 'Samuel',
-                attribute: 'age',
-                a: { chapter: 'm1', value: '15 taong gulang', quote: 'Labing-limang taong gulang si Samuel', author: 'ethan' },
-                b: { chapter: 'm2', value: '16 na taong gulang', quote: 'Labing-anim na taong gulang si Samuel', author: 'sophia' },
-                explanation: 'Ethan stated Samuel is 15 years old, while Sophia wrote he is 16 years old in Chapter 2.'
-              },
-              {
-                key: 'samuel|necklace',
-                subject: 'Samuel',
-                attribute: 'necklace material',
-                a: { chapter: 'm1', value: 'tanso (bronze)', quote: 'lumang tanso na kwintas', author: 'ethan' },
-                b: { chapter: 'm2', value: 'pilak (silver)', quote: 'kanyang pilak na kwintas', author: 'sophia' },
-                explanation: 'Ethan described the necklace as bronze, but Sophia wrote silver.'
-              }
-            ]);
-            setResolutions({});
-          } else if (id === 'story-lia') {
-            setContradictions(INITIAL_CONTRADICTIONS);
+  useEffect(() => {
+    api("/api/health")
+      .then((h) => {
+        setNeedsSetup(h.needsSetup);
+        setHasKey(h.hasGeminiApiKey);
+        return h.needsSetup ? undefined : refresh();
+      })
+      .catch((e) => {
+        if (!(e instanceof ApiError && e.status === 401)) setError(e.message);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+  useEffect(() => {
+    if (!workspace) return;
+    const timer = setInterval(() => {
+      if (!actionLock.current) refresh().catch(() => {});
+    }, 5000);
+    return () => clearInterval(timer);
+  }, [workspace?.user.id]);
+  useEffect(() => {
+    document.documentElement.lang = lang === "tl" ? "fil" : "en";
+  }, [lang]);
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+    document.getElementById("workspace-title")?.focus();
+  }, [tab, selectedId]);
+  const applyStory = (story: StoryWorkspace, userId = userRef.current) =>
+    setWorkspace((w) =>
+      w && w.user.id === userId
+        ? {
+            ...w,
+            stories: w.stories.map((s) =>
+              s.id === story.id && story.version >= s.version ? story : s,
+            ),
           }
-        }}
-        onNewStory={() => setShowNewStoryModal(true)}
-        aiStatus={aiStatus}
-        openCollisionsCount={openCollisionsCount}
-      />
-
-      {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6">
-        {currentTab === 'hub' && (
-          <ClassroomHub
-            stories={stories}
-            selectedStoryId={selectedStoryId}
-            onSelectStory={(id) => {
-              setSelectedStoryId(id);
-              if (id === 'story-makiling') {
-                setContradictions([
+        : w,
+    );
+  const action = async (kind: string, payload: unknown) => {
+    if (actionLock.current)
+      throw Error(
+        t(
+          "May kasalukuyang sine-save. Subukan muli.",
+          "A save is in progress. Retry in a moment.",
+        ),
+      );
+    const origin = currentRef.current!,
+      originUser = userRef.current;
+    actionLock.current = true;
+    readSequence.current++;
+    setSaving(true);
+    setError("");
+    try {
+      const story = await api<StoryWorkspace>(
+        `/api/stories/${origin.id}/actions`,
+        { action: kind, payload, version: origin.version },
+      );
+      if (
+        story.id !== origin.id ||
+        !Number.isInteger(story.version) ||
+        !Array.isArray(story.chapters)
+      )
+        throw Error(
+          "The server returned an invalid save response. Your draft is retained; refresh before retrying.",
+        );
+      applyStory(story, originUser);
+      setNotice(t("Nai-save sa server.", "Saved to server."));
+      return story;
+    } catch (e: any) {
+      setError(e.message);
+      await refresh().catch(() => {});
+      throw e;
+    } finally {
+      actionLock.current = false;
+      setSaving(false);
+    }
+  };
+  const runCheck = async (useAI = true) => {
+    const origin = currentRef.current!,
+      originUser = userRef.current;
+    if (checkingId || actionLock.current) return;
+    setCheckingId(origin.id);
+    setError("");
+    setNotice("");
+    try {
+      const result = await api("/api/gemini/analyze", {
+        storyId: origin.id,
+        version: origin.version,
+        lang,
+        useAI,
+      });
+      if (
+        result.story?.id !== origin.id ||
+        !Number.isInteger(result.story.version) ||
+        !Array.isArray(result.story.facts) ||
+        !Array.isArray(result.story.contradictions) ||
+        !Array.isArray(result.story.safetyFlags) ||
+        !result.usage
+      )
+        throw Error(
+          "The server returned an invalid analysis response. Previous evidence is retained; retry the check.",
+        );
+      if (originUser !== userRef.current) return;
+      readSequence.current++;
+      applyStory(result.story, originUser);
+      setWorkspace((w) => (w ? { ...w, usage: result.usage } : w));
+      setNotice(
+        t(
+          "Natapos ang pagsusuri. Kailangan pa rin ang pagrepaso ng guro. Limitado ang lokal na parser.",
+          result.notice,
+        ),
+      );
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setCheckingId("");
+      refresh().catch(() => {});
+    }
+  };
+  const chooseStory = (id: string) => {
+    setSelectedId(id);
+    setNotice("");
+    setError("");
+  };
+  const signOut = async () => {
+    try {
+      await api("/api/logout", {});
+      if (clearDrafts && workspace)
+        try {
+          clearAccountDrafts(workspace.user.id);
+        } catch {
+          setError(
+            t(
+              "Hindi nalinis ang lokal na draft. Linisin ang browser storage bago ipagamit ang device.",
+              "Local drafts could not be cleared. Clear browser storage before sharing this device.",
+            ),
+          );
+        }
+      readSequence.current++;
+      setWorkspace(null);
+      setTab("hub");
+      setSelectedId("");
+    } catch (e: any) {
+      setError(e.message);
+    }
+  };
+  if (loading)
+    return (
+      <main className="max-w-lg mx-auto p-8" role="status">
+        {t("Binubuksan ang KwentoHabi…", "Opening KwentoHabi…")}
+      </main>
+    );
+  if (!workspace)
+    return (
+      <div className="min-h-screen auth-shell p-4 sm:p-10">
+        <div className="max-w-md mx-auto card space-y-5">
+          <div className="habi-thread-bar rounded" />
+          <h1 className="text-3xl font-bold font-serif">KwentoHabi</h1>
+          <p className="eyebrow">
+            {needsSetup
+              ? t(
+                  "Para sa administrador ng paaralan",
+                  "For school administrators",
+                )
+              : t("Para sa iyong klase", "For your classroom")}
+          </p>
+          <p className="text-sm text-slate-600">
+            {t(
+              "Ikaw ang sumusulat. Guro ang gumagabay. Tinutulungan ka ng ebidensya na maghabi ng malinaw na kuwento.",
+              "Students write. Teachers guide. Evidence helps every story hold together.",
+            )}
+          </p>
+          <p>
+            {needsSetup
+              ? t(
+                  "Ihanda ang pribadong workspace ng paaralan.",
+                  "Set up your private school workspace.",
+                )
+              : t(
+                  "Mag-sign in sa account ng iyong klase.",
+                  "Sign in to your classroom account.",
+                )}
+          </p>
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const data = new FormData(e.currentTarget);
+              setError("");
+              setSaving(true);
+              try {
+                const result = await api(
+                  needsSetup ? "/api/setup" : "/api/login",
                   {
-                    key: 'samuel|age',
-                    subject: 'Samuel',
-                    attribute: 'age',
-                    a: { chapter: 'm1', value: '15 taong gulang', quote: 'Labing-limang taong gulang si Samuel', author: 'ethan' },
-                    b: { chapter: 'm2', value: '16 na taong gulang', quote: 'Labing-anim na taong gulang si Samuel', author: 'sophia' },
-                    explanation: 'Ethan stated Samuel is 15 years old, while Sophia wrote he is 16 years old in Chapter 2.'
+                    school: data.get("school"),
+                    username: data.get("username"),
+                    password: data.get("password"),
                   },
-                  {
-                    key: 'samuel|necklace',
-                    subject: 'Samuel',
-                    attribute: 'necklace material',
-                    a: { chapter: 'm1', value: 'tanso (bronze)', quote: 'lumang tanso na kwintas', author: 'ethan' },
-                    b: { chapter: 'm2', value: 'pilak (silver)', quote: 'kanyang pilak na kwintas', author: 'sophia' },
-                    explanation: 'Ethan described the necklace as bronze, but Sophia wrote silver.'
-                  }
-                ]);
-                setResolutions({});
-              } else if (id === 'story-lia') {
-                setContradictions(INITIAL_CONTRADICTIONS);
+                );
+                if (result.accounts) setCredentials(result.accounts);
+                setNeedsSetup(false);
+                await refresh();
+              } catch (e: any) {
+                setError(e.message);
+              } finally {
+                setSaving(false);
               }
             }}
-            onOpenCanvas={(storyId) => {
-              setSelectedStoryId(storyId);
-              if (storyId === 'story-makiling') {
-                setContradictions([
-                  {
-                    key: 'samuel|age',
-                    subject: 'Samuel',
-                    attribute: 'age',
-                    a: { chapter: 'm1', value: '15 taong gulang', quote: 'Labing-limang taong gulang si Samuel', author: 'ethan' },
-                    b: { chapter: 'm2', value: '16 na taong gulang', quote: 'Labing-anim na taong gulang si Samuel', author: 'sophia' },
-                    explanation: 'Ethan stated Samuel is 15 years old, while Sophia wrote he is 16 years old in Chapter 2.'
-                  },
-                  {
-                    key: 'samuel|necklace',
-                    subject: 'Samuel',
-                    attribute: 'necklace material',
-                    a: { chapter: 'm1', value: 'tanso (bronze)', quote: 'lumang tanso na kwintas', author: 'ethan' },
-                    b: { chapter: 'm2', value: 'pilak (silver)', quote: 'kanyang pilak na kwintas', author: 'sophia' },
-                    explanation: 'Ethan described the necklace as bronze, but Sophia wrote silver.'
-                  }
-                ]);
-                setResolutions({});
-              } else if (storyId === 'story-lia') {
-                setContradictions(INITIAL_CONTRADICTIONS);
-              }
-              setCurrentTab('canvas');
-            }}
-            onOpenTeacherView={() => setCurrentTab('teacher')}
-            onNewStory={() => setShowNewStoryModal(true)}
-            contradictions={contradictions}
-            resolutions={resolutions}
+          >
+            {needsSetup && (
+              <label className="field">
+                {t("Paaralan", "School")}
+                <input name="school" required maxLength={200} />
+              </label>
+            )}
+            <label className="field">
+              {t("Username ng guro / mag-aaral", "Teacher / student username")}
+              <input
+                name="username"
+                autoComplete="username"
+                required
+                maxLength={80}
+              />
+            </label>
+            <label className="field">
+              {t("Password", "Password")}
+              <input
+                type="password"
+                name="password"
+                required
+                minLength={needsSetup ? 12 : 1}
+                maxLength={128}
+                autoComplete={needsSetup ? "new-password" : "current-password"}
+              />
+            </label>
+            {needsSetup && (
+              <p className="text-sm text-slate-500">
+                {t(
+                  "Hindi bababa sa 12 karakter. Bubuo ng magkakahiwalay na account para sa mga sample na mag-aaral.",
+                  "Use at least 12 characters. Separate sample student accounts will be generated.",
+                )}
+              </p>
+            )}
+            <button className="btn w-full" disabled={saving}>
+              {needsSetup
+                ? t("Ihanda ang paaralan", "Set up school")
+                : t("Mag-sign in", "Sign in")}
+            </button>
+          </form>
+          {error && (
+            <p role="alert" className="error">
+              {error}
+            </p>
+          )}
+          <button
+            className="btn-light"
+            onClick={() => setLang(lang === "tl" ? "en" : "tl")}
+          >
+            {lang === "tl" ? "English" : "Filipino"}
+          </button>
+          <PrivacyNotice lang={lang} compact />
+        </div>
+      </div>
+    );
+  const teacher = workspace.user.role === "teacher";
+  const tabs: [Tab, string][] = [
+    ["hub", t("Silid-aralan", "Classroom")],
+    ["canvas", t("Pagsusulat", "Writing canvas")],
+    ["wiki", t("Wiki ng kuwento", "Story wiki")],
+    ...(teacher
+      ? [["teacher", t("Gabay ng guro", "Teacher review")] as [Tab, string]]
+      : []),
+    ["archive", t("Mga materyales", "Materials")],
+  ];
+  return (
+    <div className="min-h-screen app-shell pb-12">
+      <header className="bg-white border-b border-slate-200">
+        <div className="habi-thread-bar" />
+        <div className="workspace-width py-4 space-y-4">
+          <div className="flex flex-wrap justify-between items-center gap-3">
+            <div>
+              <h1 className="font-serif text-2xl font-bold">KwentoHabi</h1>
+              <p className="text-xs text-slate-500">
+                {workspace.school} · {workspace.user.name} ·{" "}
+                {teacher ? t("Guro", "Teacher") : t("Mag-aaral", "Student")}
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="btn-light"
+                onClick={() => setLang(lang === "tl" ? "en" : "tl")}
+              >
+                {lang === "tl" ? "English" : "Filipino"}
+              </button>
+              <details className="relative">
+                <summary className="btn-light cursor-pointer">
+                  {t("Account", "Account")}
+                </summary>
+                <div className="secondary-menu">
+                  <PasswordControl lang={lang} />
+                  <PrivacyNotice lang={lang} />
+                  <label className="flex items-start gap-2 text-sm p-2">
+                    <input
+                      type="checkbox"
+                      checked={clearDrafts}
+                      onChange={(e) => setClearDrafts(e.target.checked)}
+                    />
+                    {t(
+                      "Linisin ang sariling draft sa pag-sign out (shared device).",
+                      "Clear my local drafts on sign-out (shared device).",
+                    )}
+                  </label>
+                  <button className="btn-light" onClick={signOut}>
+                    {t("Mag-sign out", "Sign out")}
+                  </button>
+                </div>
+              </details>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-3 items-end">
+            <label className="field flex-1 min-w-0 sm:max-w-2xl">
+              {t("Aktibong kuwento", "Active story")}
+              <select
+                aria-label={t("Aktibong kuwento", "Active story")}
+                value={current?.id || ""}
+                onChange={(e) => chooseStory(e.target.value)}
+              >
+                {workspace.stories.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title} · {s.gradeLevel} ·{" "}
+                    {s.mode === "individual"
+                      ? t("Pribado", "Private")
+                      : t("Pangkat", "Group")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button className="btn" onClick={() => setShowNew(true)}>
+              {t("Bagong kuwento", "New story")}
+            </button>
+          </div>
+          <nav
+            aria-label={t("Pangunahing nabigasyon", "Main navigation")}
+            className="flex flex-wrap gap-2 workspace-nav"
+          >
+            {tabs.map(([id, label]) => (
+              <button
+                key={id}
+                className={tab === id ? "btn" : "btn-light"}
+                aria-current={tab === id ? "page" : undefined}
+                onClick={() => {
+                  setTab(id);
+                  setError("");
+                }}
+              >
+                {id === "hub" ? (
+                  <House size={16} />
+                ) : id === "canvas" ? (
+                  <PencilLine size={16} />
+                ) : id === "wiki" ? (
+                  <BookOpen size={16} />
+                ) : id === "teacher" ? (
+                  <ClipboardCheck size={16} />
+                ) : (
+                  <Library size={16} />
+                )}
+                {label}
+              </button>
+            ))}
+            <details className="relative">
+              <summary className="btn-light cursor-pointer">
+                <Menu size={16} />
+                {t("Tulong at proyekto", "Help & project")}
+              </summary>
+              <div className="secondary-menu">
+                <button
+                  className="btn-light"
+                  onClick={(e) => {
+                    setTab("bmc");
+                    setError("");
+                    e.currentTarget.closest("details")?.removeAttribute("open");
+                  }}
+                >
+                  BMC & Q&A
+                </button>
+                <button
+                  className="btn-light"
+                  onClick={(e) => {
+                    setShowHelp(true);
+                    e.currentTarget.closest("details")?.removeAttribute("open");
+                  }}
+                >
+                  {t("Gabay sa paggamit", "How to use KwentoHabi")}
+                </button>
+                <PrivacyNotice lang={lang} />
+              </div>
+            </details>
+          </nav>
+        </div>
+      </header>
+      <main className="workspace-width py-6 space-y-5">
+        <div
+          className="flex flex-wrap gap-2 justify-between text-xs text-slate-600"
+          role="status"
+        >
+          <span>
+            {saving
+              ? t("Sine-save…", "Saving…")
+              : connected
+                ? t(
+                    "Konektado sa server · sinusuri ang update bawat 5 segundo",
+                    "Server connected · checks for updates every 5 seconds",
+                  )
+                : t(
+                    "Walang koneksyon sa server. Suriin ang status ng draft bago umalis.",
+                    "Disconnected. Check the local draft status before leaving.",
+                  )}
+          </span>
+          <span>
+            {hasKey
+              ? t("Naka-configure ang AI", "AI configured")
+              : t("Limitadong lokal na parser", "Limited local parser")}{" "}
+            · {workspace.usage.remaining}/{workspace.usage.limit}{" "}
+            {t(
+              "natitirang pagsusuri ngayong buwan",
+              "checks remaining this month",
+            )}
+          </span>
+          <button
+            className="underline"
+            onClick={() => refresh().catch((e) => setError(e.message))}
+          >
+            {t("I-refresh", "Refresh")}
+          </button>
+        </div>
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        {workspace.user.role === "student" &&
+          ['pending','declined'].includes(workspace.user.consentStatus || '') && (
+            <p className="notice">
+              {t(
+                "Hindi aktibo ang tala ng pahintulot ng paaralan. Lokal lamang ang pagsusuri hanggang maitala ang angkop na pasya.",
+                "School authorization is not active. Checks stay local until the school records an appropriate decision.",
+              )}
+            </p>
+          )}
+        {notice && (
+          <p role="status" className="notice">
+            {notice}
+          </p>
+        )}
+        {current && tab !== "hub" && tab !== "bmc" && (
+          <>
+            <div>
+              <h2
+                id="workspace-title"
+                tabIndex={-1}
+                className="text-2xl font-serif font-bold outline-none"
+              >
+                {current.title}
+              </h2>
+              <p className="text-sm text-slate-500">
+                {current.gradeLevel} ·{" "}
+                {current.mode === "individual"
+                  ? t(
+                      "Pribadong indibidwal na gawain",
+                      "Private individual writing",
+                    )
+                  : t("Pinagsamang kuwento", "Shared writing")}{" "}
+                · {current.memberIds.length} {t("kasapi", "members")}
+              </p>
+            </div>
+            {current.instructions && (
+              <details className="card">
+                <summary className="font-semibold cursor-pointer">
+                  {t("Panuto ng gawain", "Assignment instructions")} ·{" "}
+                  {current.dueAt
+                    ? `${t("Takda", "Due")}: ${current.dueAt}`
+                    : t("Walang takdang araw", "No due date set")}
+                </summary>
+                <p className="mt-3 text-sm whitespace-pre-wrap">
+                  {current.instructions}
+                </p>
+              </details>
+            )}
+            {current.status !== "active" && (
+              <p className="notice">
+                {t(
+                  "Read-only ang gawaing ito. Maaaring buksan muli ng guro.",
+                  "This assignment is read-only. Your teacher can reopen it.",
+                )}
+              </p>
+            )}
+            {current.isDemo && (
+              <p className="badge w-fit">
+                {t(
+                  "Kathang-isip na halimbawa; hindi tunay na student data o pananaliksik.",
+                  "Fictional example; not real student records or research data.",
+                )}
+              </p>
+            )}
+            {current.checkedRevision !== current.revision && (
+              <p className="notice">
+                {t(
+                  "Hindi pa nasusuri ang kasalukuyang draft o pamantayan. Patakbuhin ang continuity check. Ang dating ebidensya ay para sa sanggunian lamang.",
+                  "Current draft or policy is unchecked. Run a continuity check. Previous evidence is shown for reference only.",
+                )}
+              </p>
+            )}
+          </>
+        )}
+        {tab === "hub" && (
+          <ClassroomHome
+            user={workspace.user}
+            users={workspace.users}
+            stories={workspace.stories}
+            school={workspace.school}
             lang={lang}
+            onNew={() => setShowNew(true)}
+            onOpen={(id, target) => {
+              chooseStory(id);
+              setTab(target);
+            }}
+            onDemo={async () => {
+              const story = await api<StoryWorkspace>("/api/demo-story", {});
+              await refresh();
+              chooseStory(story.id);
+              setTab("canvas");
+            }}
           />
         )}
-
-        {currentTab === 'canvas' && (
+        {current && tab === "canvas" && (
           <StudentCanvas
-            chapters={chapters}
-            onUpdateChapter={handleUpdateChapter}
-            onAddChapter={handleAddChapter}
-            contradictions={contradictions}
-            resolutions={resolutions}
-            onResolve={handleResolve}
-            safetyFlags={safetyFlags}
-            onRunCheck={handleRunCheck}
-            isChecking={isChecking}
-            checkMethod={checkMethod}
+            key={`${workspace.user.id}:${current.id}`}
+            story={current}
+            user={workspace.user}
+            users={workspace.users}
+            action={action}
+            onRunCheck={runCheck}
+            checking={checkingId === current.id}
+            saving={saving}
             lang={lang}
           />
         )}
-
-        {currentTab === 'wiki' && (
+        {current && tab === "wiki" && (
           <StoryWiki
-            facts={facts}
-            contradictions={contradictions}
-            resolutions={resolutions}
-            storySummary={storySummary}
+            story={current}
+            user={workspace.user}
+            users={workspace.users}
+            action={action}
+            facts={current.facts}
+            contradictions={current.contradictions}
+            resolutions={current.resolutions}
+            storySummary={current.summary}
             lang={lang}
           />
         )}
-
-        {currentTab === 'teacher' && (
+        {current && tab === "teacher" && teacher && (
           <TeacherDashboard
-            chapters={chapters}
-            contradictions={contradictions}
-            resolutions={resolutions}
-            onTeacherDecide={handleTeacherDecide}
-            safetyFlags={safetyFlags}
-            onDecideFlag={handleDecideFlag}
-            contentLevel={contentLevel}
-            onChangeContentLevel={setContentLevel}
-            resolutionLogs={resolutionLogs}
+            key={current.id}
+            story={current}
+            users={workspace.users}
+            action={action}
+            refresh={refresh}
             lang={lang}
           />
         )}
-
-        {currentTab === 'archive' && (
+        {current && tab === "archive" && (
           <MaterialsArchive
-            rubrics={rubrics}
-            onAddRubric={(r) => setRubrics(prev => [...prev, r])}
-            selectedRubricId={selectedRubricId}
-            onSelectRubric={setSelectedRubricId}
-            chapters={chapters}
+            userId={workspace.user.id}
+            key={current.id}
+            story={current}
+            rubrics={workspace.rubrics}
+            teacher={teacher}
+            action={action}
+            refresh={refresh}
             lang={lang}
           />
         )}
-
-        {currentTab === 'bmc' && (
-          <BmcAndDefense lang={lang} />
+        {tab === "bmc" && (
+          <Suspense
+            fallback={<p role="status">{t("Binubuksan…", "Loading…")}</p>}
+          >
+            <BmcAndDefense lang={lang} />
+          </Suspense>
         )}
       </main>
-
-      {/* Modal for Creating New Shared Story World */}
-      {showNewStoryModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl space-y-4">
-            <h3 className="font-bold font-serif text-lg text-slate-900">
-              {lang === 'tl' ? 'Lumikha ng Bagong Mundo ng Kuwento' : 'Create New Collaborative Story World'}
-            </h3>
-            <p className="text-xs text-slate-500">
-              {lang === 'tl'
-                ? 'Mag-set up ng panibagong collaborative canvas kung saan maghahabi ng salaysay ang inyong grupo.'
-                : 'Sets up a fresh shared narrative world for your student group.'}
+      {showHelp && (
+        <Dialog
+          title={t("Gabay sa paggamit", "How to use KwentoHabi")}
+          onClose={() => setShowHelp(false)}
+        >
+          <div className="space-y-4 text-sm">
+            <p>
+              {t(
+                "Piliin ang nakatalagang kuwento. Isulat at i-save ang sariling kabanata; magkahiwalay ang mga bagong draft at rebisyon.",
+                "Choose your assigned story. Write and save your own chapter; new drafts and revisions use separate buffers.",
+              )}
             </p>
-
-            <form onSubmit={handleCreateNewStory} className="space-y-4 text-xs">
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  {lang === 'tl' ? 'Pamagat ng Kuwento' : 'Story Title'}
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Hal. Ang Misteryo sa Lumang Bahay-na-Bato"
-                  value={newStoryTitle}
-                  onChange={(e) => setNewStoryTitle(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">
-                  {lang === 'tl' ? 'Genre / Tema' : 'Genre / Theme'}
-                </label>
-                <input
-                  type="text"
-                  placeholder="Hal. Kasaysayan, Hiwaga, Baybaying Pamayanan"
-                  value={newStoryGenre}
-                  onChange={(e) => setNewStoryGenre(e.target.value)}
-                  className="w-full p-2 border border-slate-300 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none"
-                />
-              </div>
-
-              <div className="flex justify-end space-x-2 pt-2 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowNewStoryModal(false)}
-                  className="px-3 py-1.5 text-slate-600 hover:text-slate-800"
-                >
-                  {lang === 'tl' ? 'Kanselahin' : 'Cancel'}
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-1.5 bg-slate-900 text-white rounded-lg font-semibold hover:bg-slate-800"
-                >
-                  {lang === 'tl' ? 'Lumikha ng Kuwento' : 'Create Story'}
-                </button>
-              </div>
-            </form>
+            <p>
+              {t(
+                "Lokal at limitado ang awtomatikong check pagkatapos mag-save. Opsyonal ang AI at may buwanang quota. Maaaring may maling flag o hindi matukoy na detalye.",
+                "Automatic after-save checks use a limited local parser. AI is optional and has a monthly allowance. Flags can be wrong and details can be missed.",
+              )}
+            </p>
+            <p>
+              {t(
+                "Mag-save ng sariling tala upang humingi ng gabay. Guro lamang ang maaaring magbukas muli ng kanyang pasya. Manwal ang rebisyon; guro ang nagbibigay ng huling marka.",
+                "Save your own note to ask for help. Only the teacher can reopen a teacher decision. Revisions remain manual; the teacher assigns final grades.",
+              )}
+            </p>
+            <PrivacyNotice lang={lang} />
           </div>
-        </div>
+        </Dialog>
+      )}
+      {credentials.length > 0 && (
+        <Dialog
+          title={t(
+            "Mga account ng sample na klase",
+            "Sample classroom accounts",
+          )}
+          onClose={() => setCredentials([])}
+        >
+          <p className="mb-4 text-sm">
+            {t(
+              "Itabi ang mga password na ito bago isara. Ipinapakita nang isang beses lamang. Ibahagi nang pribado sa tamang mag-aaral.",
+              "Save these passwords before closing. They are shown only once. Share privately with the assigned student.",
+            )}
+          </p>
+          <div className="overflow-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr>
+                  <th>Username</th>
+                  <th>Password</th>
+                </tr>
+              </thead>
+              <tbody>
+                {credentials.map((c) => (
+                  <tr key={c.username}>
+                    <td>{c.username}</td>
+                    <td className="font-mono select-all p-2">{c.password}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Dialog>
+      )}
+      {showNew && (
+        <NewStoryDialog
+          user={workspace.user}
+          users={workspace.users}
+          lang={lang}
+          onClose={() => setShowNew(false)}
+          onCreate={async (body) => {
+            const story = await api<StoryWorkspace>("/api/stories", body);
+            await refresh();
+            chooseStory(story.id);
+            setShowNew(false);
+            setTab("canvas");
+          }}
+        />
       )}
     </div>
+  );
+}
+function NewStoryDialog({
+  user,
+  users,
+  lang,
+  onClose,
+  onCreate,
+}: {
+  user: SessionUser;
+  users: SessionUser[];
+  lang: "tl" | "en";
+  onClose: () => void;
+  onCreate: (body: any) => Promise<void>;
+}) {
+  const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
+  const [classId, setClassId] = useState(user.classIds[0]),
+    [mode, setMode] = useState(
+      user.role === "teacher" ? "shared" : "individual",
+    ),
+    [error, setError] = useState(""),
+    [busy, setBusy] = useState(false);
+  return (
+    <Dialog title={t("Bagong kuwento", "New story")} onClose={onClose}>
+      <form
+        className="space-y-4"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const d = new FormData(e.currentTarget);
+          setBusy(true);
+          try {
+            await onCreate({
+              title: d.get("title"),
+              genre: d.get("genre"),
+              classId,
+              mode,
+              memberIds: d.getAll("members"),
+              instructions: d.get("instructions") || "",
+              dueAt: d.get("dueAt") || "",
+            });
+          } catch (e: any) {
+            setError(e.message);
+          } finally {
+            setBusy(false);
+          }
+        }}
+      >
+        <label className="field">
+          {t("Pamagat", "Title")}
+          <input name="title" required maxLength={200} />
+        </label>
+        <label className="field">
+          {t("Tema", "Genre")}
+          <input name="genre" maxLength={200} />
+        </label>
+        <label className="field">
+          {t("Klase", "Class")}
+          <select value={classId} onChange={(e) => setClassId(e.target.value)}>
+            {user.classIds.map((id) => (
+              <option key={id}>{id}</option>
+            ))}
+          </select>
+        </label>
+        <label className="field">
+          {t("Uri ng gawain", "Writing mode")}
+          <select value={mode} onChange={(e) => setMode(e.target.value)}>
+            {user.role === "teacher" && (
+              <option value="shared">{t("Pangkat", "Shared group")}</option>
+            )}
+            <option value="individual">
+              {t("Pribadong indibidwal", "Private individual")}
+            </option>
+          </select>
+        </label>
+        {user.role === "teacher" && (
+          <>
+            <label className="field">
+              {t("Panuto ng gawain", "Assignment instructions")}
+              <textarea
+                aria-label={t("Panuto ng gawain", "Assignment instructions")}
+                name="instructions"
+                rows={3}
+                maxLength={5000}
+              />
+            </label>
+            <label className="field">
+              {t("Takdang araw (Manila)", "Due date (Manila)")}
+              <input type="date" name="dueAt" />
+            </label>
+          </>
+        )}
+        {user.role === "teacher" && (
+          <fieldset className="space-y-2" key={classId + mode}>
+            <legend className="font-semibold mb-2">
+              {t("Mga kasapi", "Student members")}
+            </legend>
+            {users
+              .filter(
+                (u) => u.role === "student" && u.classIds.includes(classId),
+              )
+              .map((u) => (
+                <label key={u.id} className="flex gap-2 items-center">
+                  <input
+                    type={mode === "individual" ? "radio" : "checkbox"}
+                    name="members"
+                    value={u.id}
+                  />
+                  {u.name}
+                </label>
+              ))}
+          </fieldset>
+        )}
+        {error && (
+          <p role="alert" className="error">
+            {error}
+          </p>
+        )}
+        <button className="btn" disabled={busy}>
+          {t("Lumikha", "Create story")}
+        </button>
+      </form>
+    </Dialog>
   );
 }

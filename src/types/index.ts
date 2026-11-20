@@ -15,6 +15,12 @@ export interface Chapter {
   title: string;
   at: string;
   text: string;
+  review?: {
+    status: "reviewed" | "rework";
+    feedback: string;
+    teacherId: string;
+    at: string;
+  };
 }
 
 export interface StoryFact {
@@ -25,7 +31,44 @@ export interface StoryFact {
   authorId: string;
   chapterId: string;
   quote: string;
-  status: 'canon' | 'contested' | 'alternative';
+  status: "canon" | "contested" | "alternative";
+}
+
+export interface AnalysisCoverage {
+  truncated: boolean;
+  limits: {
+    facts: number;
+    conflicts: number;
+    flags: number;
+    quoteLength: number;
+  };
+  notice: string;
+}
+
+export interface WikiEntry {
+  id: string;
+  category:
+    "character" | "location" | "object" | "event" | "relationship" | "rule";
+  name: string;
+  description: string;
+  details: string;
+  chapterIds: string[];
+  createdBy: string;
+  updatedAt: string;
+}
+
+export interface ChapterRevision extends Chapter {
+  chapterId: string;
+  revisionId: string;
+  savedAt: string;
+}
+
+export interface ConsentRecord {
+  status: "pending" | "recorded" | "declined" | "not-required";
+  reference: string;
+  noticeVersion: string;
+  recordedAt: string;
+  recordedBy: string;
 }
 
 export interface Contradiction {
@@ -53,11 +96,13 @@ export interface Contradiction {
 
 export interface Resolution {
   key: string;
-  type: 'merged' | 'both' | 'teacher' | 'teacher-decided';
+  type: "merged" | "both" | "teacher" | "teacher-decided";
   summary: string;
   at: string;
   resolvedValue?: string;
   sourceAuthor?: string;
+  outcome?: "a" | "b" | "both";
+  notes?: Record<string, string>;
 }
 
 export interface SafetyFlag {
@@ -65,10 +110,10 @@ export interface SafetyFlag {
   chapter: string;
   author: string;
   quote: string;
-  category: 'violence' | 'self-harm' | 'sexual' | 'hate' | 'distress';
-  severity: 'mild' | 'graphic';
+  category: "violence" | "self-harm" | "sexual" | "hate" | "distress";
+  severity: "mild" | "graphic";
   reason: string;
-  decision?: 'allow' | 'rework';
+  decision?: "allow" | "rework";
 }
 
 export interface ResolutionLogEntry {
@@ -76,6 +121,11 @@ export interface ResolutionLogEntry {
   at: string;
   text: string;
   type: string;
+  discussion?: {
+    revision: number;
+    conflict: Contradiction;
+    notes: Record<string, string>;
+  };
 }
 
 export interface DefenseQuestion {
@@ -98,6 +148,77 @@ export interface RubricStandard {
     weight: number;
   }>;
   exemplarText?: string;
+  source?: string;
+  license?: string;
+  attested?: boolean;
+  visibility?: "class";
+  withdrawn?: boolean;
+}
+
+export interface SessionUser {
+  id: string;
+  name: string;
+  role: "teacher" | "student";
+  classIds: string[];
+  isDemo?: boolean;
+  consentStatus?: ConsentRecord["status"];
+}
+
+export interface StoryWorkspace {
+  id: string;
+  title: string;
+  genre: string;
+  gradeLevel: string;
+  description: string;
+  classId: string;
+  memberIds: string[];
+  mode: "shared" | "individual";
+  chapters: Chapter[];
+  version: number;
+  revision: number;
+  checkedRevision: number | null;
+  contradictions: Contradiction[];
+  facts: StoryFact[];
+  safetyFlags: SafetyFlag[];
+  resolutions: Record<string, Resolution>;
+  notes: Record<string, Record<string, string>>;
+  logs: ResolutionLogEntry[];
+  contentLevel: "strict" | "moderate" | "literature";
+  selectedRubricId: string;
+  summary: string;
+  checkMethod: string;
+  contributions: {
+    id: string;
+    authorId: string;
+    chapterId: string;
+    at: string;
+    wordsAdded: number;
+    kind: string;
+  }[];
+  evaluations?: Record<string, Evaluation>;
+  coverage?: AnalysisCoverage;
+  instructions?: string;
+  dueAt?: string;
+  status?: "active" | "closed" | "archived";
+  isDemo?: boolean;
+  wikiEntries?: WikiEntry[];
+}
+
+export interface Evaluation {
+  rubricId: string;
+  revision: number;
+  method: "gemini" | "teacher-review";
+  criteria: {
+    name: string;
+    weight: number;
+    score: number | null;
+    feedback: string;
+    evidence: { chapterId: string; quote: string }[];
+  }[];
+  notice: string;
+  generatedAt?: string;
+  generatedBy?: string;
+  language?: "tl" | "en";
 }
 
 export interface ChapterSentiment {
@@ -112,7 +233,8 @@ export interface ChapterSentiment {
   tension: number; // 0 to 100
   dominantEmotion: string;
   dominantEmotionTl: string;
-  emotionalTone: 'positive' | 'neutral' | 'melancholic' | 'intense_conflict' | 'hopeful';
+  emotionalTone:
+    "positive" | "neutral" | "melancholic" | "intense_conflict" | "hopeful";
   toneBreakdown: {
     joyHope: number;
     calmPeace: number;
@@ -131,12 +253,12 @@ export interface StoryEvent {
   chronologicalIndex: number; // 1, 2, 3...
   eventTitle: string;
   inStoryTime: string; // e.g. "Araw 1: Madaling Araw (Dawn)"
-  inStoryTimeValue: number; // relative hour / numerical progression
+  inStoryTimeValue: number | null; // relative hour / numerical progression
   durationEstimate: string;
   wordCount: number;
-  pacingRating: 'dragging' | 'balanced' | 'rushed';
+  pacingRating: "dragging" | "balanced" | "rushed";
   pacingNote: string;
-  narrativeTechnique: 'linear' | 'flashback' | 'time_skip' | 'simultaneous';
+  narrativeTechnique: "linear" | "flashback" | "time_skip" | "simultaneous";
   temporalCollision?: string;
   keyQuote: string;
 }

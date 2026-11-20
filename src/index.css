@@ -2,9 +2,9 @@
 
 @layer base {
   :root {
-    --font-display: 'Bricolage Grotesque', system-ui, sans-serif;
-    --font-serif: 'Source Serif 4', Georgia, serif;
-    --font-mono: 'IBM Plex Mono', monospace;
+    --font-display: "Plus Jakarta Sans", system-ui, sans-serif;
+    --font-serif: "Source Serif 4", Georgia, serif;
+    --font-mono: "IBM Plex Mono", monospace;
 
     /* Philippine traditional weaving inspired palette */
     --color-habi-indigo: #1e3a8a;
@@ -27,9 +27,21 @@
 
 /* Woven textile ribbon background pattern */
 .bg-habi-pattern {
-  background-image: 
-    repeating-linear-gradient(45deg, rgba(30, 58, 138, 0.04) 0px, rgba(30, 58, 138, 0.04) 2px, transparent 2px, transparent 10px),
-    repeating-linear-gradient(-45deg, rgba(194, 65, 12, 0.04) 0px, rgba(194, 65, 12, 0.04) 2px, transparent 2px, transparent 10px);
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(30, 58, 138, 0.04) 0px,
+      rgba(30, 58, 138, 0.04) 2px,
+      transparent 2px,
+      transparent 10px
+    ),
+    repeating-linear-gradient(
+      -45deg,
+      rgba(194, 65, 12, 0.04) 0px,
+      rgba(194, 65, 12, 0.04) 2px,
+      transparent 2px,
+      transparent 10px
+    );
 }
 
 .habi-thread-bar {
@@ -99,4 +111,205 @@ mark.hl-distress {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+@layer components {
+  .workspace-width {
+    @apply w-full max-w-[1680px] mx-auto px-4 sm:px-6 lg:px-8;
+  }
+  .card {
+    @apply bg-white rounded-xl border border-slate-200 p-4 sm:p-6 shadow-sm min-w-0;
+  }
+  .btn {
+    @apply inline-flex gap-2 min-h-11 items-center justify-center rounded-lg bg-slate-900 text-white font-semibold text-sm px-4 py-2.5 hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-light {
+    @apply inline-flex gap-2 min-h-11 items-center justify-center rounded-lg bg-slate-100 text-slate-800 font-semibold text-sm px-3 py-2 hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .field {
+    @apply flex flex-col gap-1.5 text-sm font-semibold text-slate-700 min-w-0;
+  }
+  .field input:not([type="checkbox"]):not([type="radio"]),
+  .field select,
+  .field textarea {
+    @apply w-full min-w-0 max-w-full rounded-lg border border-slate-300 bg-white p-2.5 text-slate-900 font-normal;
+  }
+  .story-prose {
+    @apply font-serif text-base sm:text-lg leading-relaxed whitespace-pre-wrap break-words max-w-[75ch];
+  }
+  .notice {
+    @apply rounded-lg border border-indigo-200 bg-indigo-50 text-indigo-900 px-4 py-3 text-sm break-words;
+  }
+  .error {
+    @apply rounded-lg border border-rose-200 bg-rose-50 text-rose-900 px-4 py-3 text-sm break-words;
+  }
+  .dialog-panel {
+    @apply rounded-2xl border border-slate-200 bg-white text-slate-900 p-5 sm:p-7 shadow-xl w-[calc(100%-2rem)] max-w-xl max-h-[90dvh] overflow-y-auto;
+    margin: auto;
+  }
+  .eyebrow {
+    @apply text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-600;
+  }
+  .badge {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-700;
+  }
+  .stat-icon {
+    @apply inline-flex size-12 shrink-0 items-center justify-center rounded-xl bg-teal-50 text-teal-800;
+  }
+  .welcome-panel {
+    @apply relative overflow-hidden rounded-2xl border border-[#ddd9ce] bg-[#f0eee6] p-6 sm:p-9 lg:p-10;
+  }
+  .secondary-menu {
+    @apply absolute right-0 top-full z-40 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-3 shadow-xl flex flex-col gap-2;
+  }
+  .activity-row {
+    @apply flex min-h-14 w-full items-center justify-between gap-3 border-b border-slate-100 py-3 text-left;
+  }
+  .profile-initial {
+    @apply flex size-11 shrink-0 items-center justify-center rounded-xl bg-amber-50 font-serif text-xl font-bold text-amber-900;
+  }
+  .section-divider {
+    @apply border-t border-slate-200;
+  }
+}
+.app-shell {
+  background: #f7f6f2;
+}
+.app-shell .text-slate-500 {
+  color: #526176;
+}
+.auth-shell {
+  background:
+    radial-gradient(ellipse at top left, #e9e8df, transparent 65%), #f7f6f2;
+}
+.auth-shell > .card {
+  margin-top: min(7vh, 5rem);
+}
+.habi-thread-bar {
+  height: 4px;
+  opacity: 0.82;
+}
+.writing-surface textarea {
+  font-family: var(--font-serif);
+  font-size: 1.125rem;
+  line-height: 1.8;
+  background: #fffefa;
+}
+.story-card {
+  transition:
+    border-color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+.story-card:hover {
+  border-color: #a7b7ac;
+  box-shadow: 0 5px 22px rgb(15 23 42 / 0.05);
+}
+.loom-motif {
+  position: absolute;
+  right: -2rem;
+  top: -3rem;
+  width: 26rem;
+  height: 26rem;
+  opacity: 0.15;
+  transform: rotate(24deg);
+  pointer-events: none;
+  display: flex;
+  gap: 1.8rem;
+}
+.loom-motif > div {
+  width: 3rem;
+  height: 30rem;
+  background: #20766d;
+}
+.loom-motif > div:nth-child(2n) {
+  background: #c27b35;
+  transform: translateY(2rem);
+}
+.loom-motif::after {
+  content: "";
+  position: absolute;
+  inset: 6rem -5rem;
+  border-top: 3rem solid #1c405a;
+  border-bottom: 3rem solid #1c405a;
+}
+@media (max-width: 1023px) {
+  .loom-motif {
+    right: -15rem;
+    opacity: 0.07;
+  }
+}
+@media (max-width: 639px) {
+  .workspace-nav {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+    padding-bottom: 0.25rem;
+  }
+  .workspace-nav > button,
+  .workspace-nav > details {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  .secondary-menu {
+    position: fixed;
+    top: 4.5rem;
+    left: 1rem;
+    right: 1rem;
+    width: auto;
+  }
+  .welcome-panel {
+    padding: 1.5rem;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+@media print {
+  header,
+  nav,
+  button,
+  summary {
+    display: none !important;
+  }
+  .card {
+    break-inside: avoid;
+  }
+}
+dialog::backdrop {
+  background: rgb(15 23 42 / 0.65);
+}
+button,
+select,
+summary {
+  cursor: pointer;
+}
+button,
+input,
+textarea,
+select,
+a,
+summary {
+  outline-offset: 3px;
+}
+:focus-visible {
+  outline: 3px solid #4f46e5;
+}
+* {
+  overflow-wrap: anywhere;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+
+.secondary-menu {
+  max-height: min(70dvh, 32rem);
+  overflow-y: auto;
 }
