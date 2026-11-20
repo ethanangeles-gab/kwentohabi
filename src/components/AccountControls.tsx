@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { api } from "../utils/client";
+import { GuardianRecord } from "./GuardianRecord";
 import { Dialog } from "./Dialog";
 import type { SessionUser } from "../types";
 
@@ -142,7 +143,15 @@ export function ClassRoster({
             key={u.id}
             className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2"
           >
-            <span className="font-semibold text-sm">{u.name}</span>
+            <span className="font-semibold text-sm">
+              {u.name}
+              {u.isDemo && (
+                <span className="badge ml-2">
+                  {t("Kathang-isip", "Fictional")}
+                </span>
+              )}
+            </span>
+            <GuardianRecord user={u} lang={lang} onSaved={refresh} />
             <button
               className="btn-light"
               disabled={busy}

@@ -1,4 +1,64 @@
-﻿# QA fixes and BMC alignment
+# QA fixes and BMC alignment
+
+Current implementation: **20 November 2026 (Asia/Manila), version 1.2.0**.
+
+This second pass uses all six supplied `Techno_QA (1)` through `(6)` PDFs as review evidence. Statements inside those reports such as “QA only” describe earlier reviews; the user's current request authorizes repairs. The original QA report and the two BMC/scope PDFs continue to guide product boundaries. All source PDFs are preserved unchanged.
+
+KwentoHabi remains teacher-led, evidence-linked writing support. Students write; teachers decide final outcomes and grades. Automatic checks do not rewrite chapters, diagnose learners, prove learning outcomes, contact guardians, or notify counselors. BMC/pitch content is under **Help & project**, outside the primary classroom navigation.
+
+## Second-pass confirmed findings
+
+“Implemented” describes the repaired behavior and regression checks below. It does not certify live model accuracy or production school readiness.
+
+| Finding in Techno_QA (1)                                | Implemented behavior                                                                                                                                                                                                                                            | Verification                                                                                                    |
+| ------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| QA-01 · teacher arbitration can be overwritten          | Server rejects student changes to teacher-decided conflicts; the teacher alone can reopen. Unrelated chapter edits/rechecks retain decisions on unchanged evidence. Changed evidence is re-reviewed. UI explains the lock.                                      | API role checks, unrelated-edit/recheck regression, browser locked-decision flow.                               |
+| QA-02 · typing during an in-flight save is erased       | Save acknowledgment applies to the submitted snapshot only. Later typing remains a revision of the returned chapter, including delayed create and edit responses.                                                                                               | Pure state tests and delayed-response browser tests, including reload.                                          |
+| QA-03 · Edit below replaces an unsaved draft            | Independent buffers retain new chapters, existing-chapter edits, and restored revisions. Switching preserves other buffers; discard targets the current draft.                                                                                                  | Pure state and browser switch/reload tests.                                                                     |
+| QA-04 · valid classroom logins exhaust shared IP budget | Only failed attempts spend failed-login budgets. Per-account and IP/account controls remain, with a larger failed-IP ceiling. Teacher password resets clear the student's lock and revoke sessions.                                                             | 35 successful same-IP logins, failure lock, unaffected peer, reset/recovery tests.                              |
+| QA-05 · feedback disappears but allowance is spent      | Persisted reports are keyed by user/story/rubric/revision/language/method preference. Reopening unchanged reports uses no additional allowance. Regeneration is explicit; outdated feedback is labeled.                                                         | API cache/quota/restart and browser navigation/reload tests.                                                    |
+| QA-06 · absent peer blocks asking teacher               | A learner can escalate with their own saved perspective. The absent peer's note is not required. Mutual peer decisions still require both perspectives; teachers can initiate review.                                                                           | API and browser unilateral-help checks.                                                                         |
+| QA-07 · HTTPS reverse proxy origin rejection            | Exact `APP_ORIGIN` and explicit trusted proxy addresses/networks support TLS termination. Broad trust-all settings are rejected; foreign origins remain blocked.                                                                                                | Local canonical-origin and trusted forwarding-header integration tests; real TLS deployment remains unverified. |
+| QA-08 · local output amplification                      | Analysis limits: 200 facts, 80 conflicts, 60 flags, 320 characters per quote. Generation stops emitting at limits, provider output is bounded, and truncation is disclosed. After-save local checking skips manuscripts above 200,000 characters with a notice. | 150-age manuscript unit/API fixtures and persisted result bounds.                                               |
+| QA-09 · duplicate-source / same-author model conflicts  | Shared-mode conflicts require distinct authors and distinct evidence; individual mode can review same-author differences. Known chapter references and exact source quotes remain mandatory.                                                                    | Invalid/same-source controlled-provider cases and mode-specific unit tests.                                     |
+| QA-10 · defense accessibility                           | Topic/search controls have accessible names; question buttons expose expanded state and controlled answer IDs.                                                                                                                                                  | Browser semantics and selected axe accessibility checks.                                                        |
+
+## Additional improvements across the six reports
+
+| Report                                       | Completed in this pass                                                                                                                                                                                                                                                                                                                | Boundaries                                                                                                                                                                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| (2) · classroom experience and demonstration | Role-specific home screens, next actions, pending/recent activity, participation indicators, focus writing, visible browser-draft status, word count, undo/redo, optional AI, revision history, categorized source-linked wiki profiles, teacher filters/feedback/history/exports, original **Ang Huling Habi** demonstration.        | Participation and tone are labeled limited indicators. The fictional story/accounts/illustrative feedback are not research. AI supplies feedback rather than authoring student manuscripts.                       |
+| (3) · four functional gaps                   | Clinical/game context prevents the reported “blood test” and “hit the target” false positives. PDF/DOCX/TXT import provides editable extraction preview. Saving performs optional bounded local continuity checking by default. Bilingual privacy notice and teacher-managed guardian/school-decision records are available.          | Context matching remains a limited rule set. Scans require OCR; DOC requires conversion. Consent records document the school's assertion; they do not contact guardians or verify legal sufficiency.              |
+| (4) · second observational review            | Direct document import, after-save checking, privacy recordkeeping, and clearer fictional/unchecked/AI labels address the observed gaps. Current UI removes unsupported BMC outcome claims while preserving supplied artifacts.                                                                                                       | Real model accuracy and historical source-document corrections remain separate work.                                                                                                                              |
+| (5) · audit / reliability                    | Test databases use generated system temporary directories with cleanup. Failed localStorage writes produce an actionable warning, download option, and server-save path. A process lock refuses a second writer. Backup/inspect/offline restore are implemented and tested; restore revokes sessions and retains the prior workspace. | The JSON backend is still single process; managed shared storage is required for replicas. Backups require protected storage. Automated archive/history bounds are not a comprehensive retention/deletion policy. |
+| (6) · design and school adoption             | Calm loom accents, consistent typography/statuses, icon-and-text navigation, compact mobile navigation, role-specific homes, onboarding/help/demo, assignment instructions/deadlines/close/archive/reopen, teacher-controlled exports, reduced motion, and selected contrast/accessibility checks.                                    | Full screen-reader/disabled-user, physical-device, on-screen-keyboard, production performance and operational acceptance remain rollout work.                                                                     |
+
+Import processing accepts up to 4 MB, 50 PDF pages and 50,000 retained text characters, with bounded DOCX expansion and a separate short-lived parsing process. Teacher review, editable criteria, source/license details, and permission attestation precede archival. No imported source file is retained. Private user data is excluded from test fixtures.
+
+Pending/declined school-decision records prevent optional provider requests for actual learners' work. Local checks remain available. Reports retain at most 30 recent entries/story. Revision history retains up to 20 unique versions/chapter within 200 versions and 2 million characters/story; restoring opens a draft. Shared-device users can clear their own browser drafts on sign-out.
+
+## Verification — second pass
+
+- `npm run lint`: passed TypeScript checking.
+- `npm test`: **24/24 named tests passed**, including isolated server integrations, restart persistence, authorization, controlled provider responses, parser failures, backup/restore, and draft state races.
+- Clean `npm ci`: passed in an isolated source copy without `.env.local` or pre-existing `tmp`; lint and all 24 tests also passed in that copy. The workspace's running development process was preserved. The primary dependency tree was restored with `npm install` after Windows blocked replacement of a native DLL in use.
+- `npm run test:browser`: passed production build and **124 responsive language/view/size states** (60 original teacher states plus 40 student and 24 BMC states), nine additional workflow checks, and five WCAG-tagged axe scans with **0 detected violations** and **0 browser JavaScript errors**. Keyboard/modal and original workflow regressions also passed. Sizes span 320, 390, 768, 1440, and 1920 pixels; BMC subtabs use 320, 768, and 1920. These counts describe scripted states, not distinct physical devices. Additional workflow/accessibility results: `tmp/round2-browser-results.json`; screenshots include `tmp/round2-teacher-home.png`, `tmp/round2-mobile-home.png`, and `tmp/round2-story-wiki.png`.
+- `npm ls --depth=0`: passed with no missing or invalid direct dependencies.
+- `npm audit`: **0 reported vulnerabilities**, including development dependencies, on 20 November 2026. This supersedes the first-pass advisory count.
+
+Automated provider tests use a synthetic local stub and no live Google requests. API/browser records are synthetic and isolated from the school's workspace. Browser screenshots/results are retained under `tmp`; test databases are removed. Source PDFs and existing environment credentials are untouched.
+
+## Remaining deployment gates
+
+Before school production or sales, verify live Gemini quality/cost/latency with an authorized key and reviewed Filipino/English writing; deploy and test HTTPS using the actual proxy boundary; agree guardian/notice/safeguarding processes; establish protected backup access, retention/deletion, recovery, monitoring and support. Migrate storage for multiple replicas or school tenants. Validate accessibility with users and define measured device/network performance budgets.
+
+Additional-class administration, multi-school tenancy, automated guardian/counselor notifications, billing, marketplace payments, and CSR operations remain rollout capabilities rather than implemented services. Pricing and educational-outcome assumptions require pilot evidence. No production, compliance, accessibility, or learning-outcome certification is claimed.
+
+## First-pass history
+
+The record below describes **18 November 2026** only. Its manual-only checking, parser backlog, 14-test count, and dependency advisory statements are superseded by the current behavior and evidence above. First-pass F13 now retains unchanged teacher arbitration; F20 now performs optional local after-save checking. This history is retained for traceability.
+
+## Historical first pass — 18 November 2026
 
 Implementation date: 18 November 2026 (Asia/Manila).
 
@@ -6,7 +66,7 @@ The supplied Techno_QA report is the findings backlog. Its historical instructio
 
 The core remains teacher-led writing feedback: author-attributed continuity evidence, teacher references, a story wiki, respectful peer discussion, and teacher content review. Institutional licensing is the planned primary revenue stream; marketplace and CSR are planned secondary streams. The app does not imply that those commercial services or formal incorporation are already operational.
 
-## Finding disposition
+### First-pass finding disposition
 
 “Implemented” means the described code path and available regression checks were repaired. It does not certify live model accuracy, legal compliance, or production readiness. “Scoped” records an explicit limitation or an alternative accepted by the QA recommendation.
 
@@ -57,7 +117,7 @@ The core remains teacher-led writing feedback: author-attributed continuity evid
 | C02     | Implemented: categorical competitor-capability claims are replaced by a scoped description of the combined classroom workflow. No current competitor superiority claim is made.                                                                                                                                                                 |
 | C03     | Implemented in app copy: historical reading evidence is distinguished from the team's writing-feedback hypothesis. Editing the external spoken script/source artifacts remains with their owners; no new numerical educational-outcome claim is made.                                                                                           |
 
-## Validation and limits
+### First-pass validation and limits (historical)
 
 - `npm run lint`: TypeScript check.
 - `npm test`: 14 named tests, including broad authenticated API scenarios; exact English/Filipino source evidence, three-author pairs, individual privacy, permissions, concurrent saves, moderation, restart persistence, quota enforcement, controlled stale/malformed model output, rubric ingestion, timeline uncertainty, and tone normalization.

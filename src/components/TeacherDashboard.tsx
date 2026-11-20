@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { AssignmentTools, ChapterReviewPanel } from "./AssignmentTools";
 import { ClassRoster } from "./AccountControls";
 import type { SessionUser, StoryWorkspace } from "../types";
 import { extractStoryTimeline } from "../utils/timelineAnalysis";
@@ -31,6 +32,22 @@ export function TeacherDashboard({
       setBusy(false);
     }
   };
+  const [studentFilter, setStudentFilter] = useState("all"),
+    [from, setFrom] = useState(""),
+    [until, setUntil] = useState("");
+  const included = (chapterId: string) => {
+    const ch = story.chapters.find((c) => c.id === chapterId);
+    if (!ch) return false;
+    const day = new Date(ch.at).toLocaleDateString("en-CA", {
+      timeZone: "Asia/Manila",
+    });
+    return (
+      (studentFilter === "all" || ch.authorId === studentFilter) &&
+      (!from || day >= from) &&
+      (!until || day <= until)
+    );
+  };
+  const filteredChapters = story.chapters.filter((ch) => included(ch.id));
   const stale = story.checkedRevision !== story.revision;
   const name = (id: string) => users.find((u) => u.id === id)?.name || id;
   const now = new Date(),
@@ -49,6 +66,78 @@ export function TeacherDashboard({
   const { events } = extractStoryTimeline(story.chapters);
   return (
     <div className="space-y-6">
+      <div className="flex flex-wrap gap-3 justify-between items-center">
+        <div>
+          <p className="eyebrow">
+            {t("Guro ang gumagabay", "Teacher-led review")}
+          </p>
+          <h3 className="font-serif text-xl font-bold">
+            {t("Mga kailangang aksyunan", "Your review queue")}
+          </h3>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <a
+            className="btn-light"
+            href={`/api/stories/${story.id}/export?format=json`}
+            download
+          >
+            {t("I-export ang buong tala", "Export review history")}
+          </a>
+          <a
+            className="btn-light"
+            href={`/api/stories/${story.id}/export?format=csv`}
+            download
+          >
+            {t("I-export ang CSV", "Export CSV")}
+          </a>
+        </div>
+      </div>
+      <div className="card grid sm:grid-cols-3 gap-4">
+        <label className="field">
+          {t("Mag-aaral", "Student")}
+          <select
+            aria-label={t("Filter ng mag-aaral", "Filter by student")}
+            value={studentFilter}
+            onChange={(e) => setStudentFilter(e.target.value)}
+          >
+            <option value="all">
+              {t("Lahat ng kasapi", "All story members")}
+            </option>
+            {users
+              .filter((u) => story.memberIds.includes(u.id))
+              .map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.name}
+                </option>
+              ))}
+          </select>
+        </label>
+        <label className="field">
+          {t("Mula sa petsa ng pagsusumite", "Submitted from")}
+          <input
+            type="date"
+            value={from}
+            onChange={(e) => setFrom(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          {t("Hanggang petsa", "Submitted until")}
+          <input
+            type="date"
+            min={from}
+            value={until}
+            onChange={(e) => setUntil(e.target.value)}
+          />
+        </label>
+      </div>
+      <ChapterReviewPanel
+        story={story}
+        chapters={filteredChapters}
+        action={action}
+        lang={lang}
+        teacherId={users.find((u) => u.role === "teacher")?.id || "teacher"}
+      />
+
       {error && (
         <p role="alert" className="error">
           {error}
@@ -86,10 +175,15 @@ export function TeacherDashboard({
       <div className="grid xl:grid-cols-2 gap-5 items-start">
         <section className="card space-y-4">
           <h3 className="font-serif text-xl font-bold">
-            {t("Mga kahilingan para sa gabay", "Escalated discussions")}
+            {t("Talakayang maaaring gabayan", "Discussions needing guidance")}
           </h3>
           {story.contradictions
-            .filter((c) => story.resolutions[c.key]?.type === "teacher")
+            .filter(
+              (c) =>
+                (!story.resolutions[c.key] ||
+                  story.resolutions[c.key].type === "teacher") &&
+                (included(c.a.chapter) || included(c.b.chapter)),
+            )
             .map((c) => (
               <article
                 key={c.key}
@@ -110,7 +204,7 @@ export function TeacherDashboard({
                       “{side.quote}”
                     </blockquote>
                     <p className="bg-slate-50 p-2 rounded">
-                      {story.resolutions[c.key].notes?.[side.author] ||
+                      {story.resolutions[c.key]?.notes?.[side.author] ||
                         story.notes[c.key]?.[side.author] ||
                         t("Walang tala", "No note")}
                     </p>
@@ -149,52 +243,54 @@ export function TeacherDashboard({
               "Passages for teacher review",
             )}
           </h3>
-          {story.safetyFlags.map((f) => (
-            <article
-              key={f.key}
-              className="border border-rose-200 rounded-lg p-4 space-y-3"
-            >
-              <p className="text-sm font-bold">
-                {name(f.author)} · {f.chapter} · {f.category}
-              </p>
-              <blockquote className="font-serif text-sm">
-                “{f.quote}”
-              </blockquote>
-              <p className="text-xs text-slate-500">
-                {t(
-                  "Kailangan ang konteksto at pagrepaso ng guro. Walang naipadalang referral; kung kailangan, sundin ang proseso ng paaralan sa labas ng app.",
-                  "Teacher context and review required. No referral has been sent; if needed, follow your school’s process outside this app.",
-                )}
-              </p>
-              <p className="text-sm font-semibold">
-                {f.decision === "allow"
-                  ? t("Nirepaso: pinayagan", "Reviewed: allowed")
-                  : f.decision === "rework"
-                    ? t("Humiling ng rebisyon", "Revision requested")
-                    : t("Naghihintay ng pagrepaso", "Pending review")}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  className="btn-light"
-                  disabled={busy || stale}
-                  onClick={() =>
-                    send("moderate", { key: f.key, decision: "allow" })
-                  }
-                >
-                  {t("Payagan sa konteksto", "Allow in context")}
-                </button>
-                <button
-                  className="btn-light"
-                  disabled={busy || stale}
-                  onClick={() =>
-                    send("moderate", { key: f.key, decision: "rework" })
-                  }
-                >
-                  {t("Humiling ng rebisyon", "Request revision")}
-                </button>
-              </div>
-            </article>
-          ))}
+          {story.safetyFlags
+            .filter((f) => included(f.chapter))
+            .map((f) => (
+              <article
+                key={f.key}
+                className="border border-rose-200 rounded-lg p-4 space-y-3"
+              >
+                <p className="text-sm font-bold">
+                  {name(f.author)} · {f.chapter} · {f.category}
+                </p>
+                <blockquote className="font-serif text-sm">
+                  “{f.quote}”
+                </blockquote>
+                <p className="text-xs text-slate-500">
+                  {t(
+                    "Kailangan ang konteksto at pagrepaso ng guro. Walang naipadalang referral; kung kailangan, sundin ang proseso ng paaralan sa labas ng app.",
+                    "Teacher context and review required. No referral has been sent; if needed, follow your school’s process outside this app.",
+                  )}
+                </p>
+                <p className="text-sm font-semibold">
+                  {f.decision === "allow"
+                    ? t("Nirepaso: pinayagan", "Reviewed: allowed")
+                    : f.decision === "rework"
+                      ? t("Humiling ng rebisyon", "Revision requested")
+                      : t("Naghihintay ng pagrepaso", "Pending review")}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    className="btn-light"
+                    disabled={busy || stale}
+                    onClick={() =>
+                      send("moderate", { key: f.key, decision: "allow" })
+                    }
+                  >
+                    {t("Payagan sa konteksto", "Allow in context")}
+                  </button>
+                  <button
+                    className="btn-light"
+                    disabled={busy || stale}
+                    onClick={() =>
+                      send("moderate", { key: f.key, decision: "rework" })
+                    }
+                  >
+                    {t("Humiling ng rebisyon", "Request revision")}
+                  </button>
+                </div>
+              </article>
+            ))}
           {!story.safetyFlags.length && (
             <p className="text-sm text-slate-500">
               {t(
@@ -205,6 +301,33 @@ export function TeacherDashboard({
           )}
         </section>
       </div>
+      {story.contradictions.some(
+        (c) => story.resolutions[c.key]?.type === "teacher-decided",
+      ) && (
+        <section className="card space-y-3">
+          <h3 className="font-serif text-xl font-bold">
+            {t("Naka-lock na pasya ng guro", "Locked teacher decisions")}
+          </h3>
+          {story.contradictions
+            .filter((c) => story.resolutions[c.key]?.type === "teacher-decided")
+            .map((c) => (
+              <article key={c.key} className="border-b pb-3 space-y-2">
+                <h4 className="font-semibold">
+                  {c.subject}: {c.attribute}
+                </h4>
+                <p className="text-sm">{story.resolutions[c.key].summary}</p>
+                <button
+                  className="btn-light"
+                  disabled={busy}
+                  onClick={() => send("reopen", { key: c.key })}
+                >
+                  {t("Buksan muli ang talakayan", "Reopen discussion")}
+                </button>
+              </article>
+            ))}
+        </section>
+      )}
+      <AssignmentTools story={story} action={action} lang={lang} />
       <section className="card space-y-4">
         <h3 className="font-serif text-xl font-bold">
           {t(
@@ -335,6 +458,35 @@ export function TeacherDashboard({
           ))}
         </div>
       </section>
+      <details className="card">
+        <summary className="font-semibold cursor-pointer">
+          {t("Mga na-save na rubric report", "Saved rubric feedback history")} (
+          {Object.keys(story.evaluations || {}).length})
+        </summary>
+        <div className="mt-4 space-y-3">
+          {Object.values(story.evaluations || {})
+            .sort((a, b) =>
+              (b.generatedAt || "").localeCompare(a.generatedAt || ""),
+            )
+            .map((evaluation, i) => (
+              <article key={i} className="border-b pb-3 text-sm space-y-2">
+                <p className="font-semibold">
+                  {name(evaluation.generatedBy || "")} ·{" "}
+                  {t("rebisyon", "revision")} {evaluation.revision} ·{" "}
+                  {evaluation.revision === story.revision
+                    ? t("Kasalukuyan", "Current")
+                    : t("Luma na", "Outdated")}
+                </p>
+                <p>{evaluation.notice}</p>
+                {evaluation.criteria.map((c, j) => (
+                  <p key={j}>
+                    <b>{c.name}</b>: {c.feedback}
+                  </p>
+                ))}
+              </article>
+            ))}
+        </div>
+      </details>
       <details>
         <summary className="btn-light w-fit mb-3">
           {t(

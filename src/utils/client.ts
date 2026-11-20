@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -34,26 +34,71 @@ export async function api<T = any>(
 export function useDraft<T>(
   key: string,
   initial: T,
-): [T, (value: T | ((previous: T) => T)) => void] {
-  const [value, setValue] = useState<T>(() => {
+): [
+  T,
+  (value: T | ((previous: T) => T)) => void,
+  { persisted: boolean; error: string },
+] {
+  const [snapshot, setSnapshot] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem(key) || "null") ?? initial;
+      return {
+        value: JSON.parse(localStorage.getItem(key) || "null") ?? initial,
+        persisted: true,
+        error: "",
+      };
     } catch {
-      return initial;
+      return {
+        value: initial,
+        persisted: false,
+        error:
+          "Browser storage is unavailable or the saved draft could not be read.",
+      };
     }
   });
-  const update = (next: T | ((previous: T) => T)) =>
-    setValue((previous) => {
-      const resolved =
-        typeof next === "function" ? (next as (p: T) => T)(previous) : next;
-      try {
-        localStorage.setItem(key, JSON.stringify(resolved));
-      } catch {
-        /* In-memory draft remains available. */
-      }
-      return resolved;
-    });
-  return [value, update];
+  const valueRef = useRef<T>(snapshot.value);
+  const update = (next: T | ((previous: T) => T)) => {
+    const resolved =
+      typeof next === "function"
+        ? (next as (p: T) => T)(valueRef.current)
+        : next;
+    valueRef.current = resolved;
+    try {
+      localStorage.setItem(key, JSON.stringify(resolved));
+      setSnapshot({ value: resolved, persisted: true, error: "" });
+    } catch {
+      setSnapshot({
+        value: resolved,
+        persisted: false,
+        error:
+          "Draft not saved locally. Keep this page open and save to the server or download a copy.",
+      });
+    }
+  };
+  return [
+    snapshot.value,
+    update,
+    { persisted: snapshot.persisted, error: snapshot.error },
+  ];
+}
+export function downloadFile(
+  name: string,
+  text: string,
+  mime = "text/plain;charset=utf-8",
+) {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }));
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = name;
+  anchor.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+export function clearAccountDrafts(userId: string) {
+  for (const key of Object.keys(localStorage))
+    if (
+      key.startsWith(`kwentohabi-draft:${userId}:`) ||
+      key.startsWith(`kwentohabi-material:${userId}:`)
+    )
+      localStorage.removeItem(key);
 }
 
 function localizeError(message: string): string {

@@ -1,5 +1,12 @@
-﻿import React, { useState } from "react";
-import type { StoryFact, Contradiction, Resolution } from "../types";
+import React, { useState } from "react";
+import type {
+  StoryFact,
+  Contradiction,
+  Resolution,
+  StoryWorkspace,
+  SessionUser,
+} from "../types";
+import { WikiProfiles } from "./WikiProfiles";
 import { AUTHORS } from "../data/initialData";
 type Props = {
   facts: StoryFact[];
@@ -7,6 +14,10 @@ type Props = {
   resolutions: Record<string, Resolution>;
   storySummary: string;
   lang: "tl" | "en";
+  story: StoryWorkspace;
+  user: SessionUser;
+  users: SessionUser[];
+  action: (kind: string, payload: any) => Promise<StoryWorkspace>;
 };
 export function StoryWiki({
   facts,
@@ -14,6 +25,10 @@ export function StoryWiki({
   resolutions,
   storySummary,
   lang,
+  story,
+  user,
+  users,
+  action,
 }: Props) {
   const [search, setSearch] = useState("");
   const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
@@ -54,7 +69,15 @@ export function StoryWiki({
       : t("Kailangan ng pag-align", "Needs alignment");
   };
   return (
-    <section className="space-y-5">
+    <section className="space-y-8">
+      <WikiProfiles
+        story={story}
+        user={user}
+        users={users}
+        action={action}
+        lang={lang}
+      />
+      <div className="section-divider" />
       <div className="card space-y-3">
         <h3 className="text-xl font-serif font-bold">
           {t("Mga detalye at pinagmulan", "Facts and source evidence")}
@@ -100,7 +123,10 @@ export function StoryWiki({
                 “{f.quote}”
               </blockquote>
               <p className="text-xs text-slate-500">
-                {AUTHORS[f.authorId]?.name || f.authorId} · {f.chapterId}
+                {users.find((u) => u.id === f.authorId)?.name ||
+                  AUTHORS[f.authorId]?.name ||
+                  f.authorId}{" "}
+                · {f.chapterId}
               </p>
             </article>
           ))}

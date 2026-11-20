@@ -1,60 +1,20 @@
-﻿import assert from "node:assert/strict";
+import assert from "node:assert/strict";
 import test from "node:test";
-import { spawn, type ChildProcess } from "node:child_process";
+import { fixture } from "./runtime.mjs";
 import { mkdtemp, readFile } from "node:fs/promises";
 import path from "node:path";
 import net from "node:net";
 
-export async function fixture(extra: Record<string, string> = {}) {
-  const dir = await mkdtemp(path.resolve("tmp/qa-server-"));
-  const probe = net.createServer();
-  await new Promise<void>((r) => probe.listen(0, "127.0.0.1", r));
-  const port = (probe.address() as net.AddressInfo).port;
-  await new Promise<void>((r) => probe.close(() => r()));
-  let child: ChildProcess;
-  let output = "";
-  const start = async () => {
-    child = spawn(process.execPath, ["--import", "tsx", "server.ts"], {
-      cwd: process.cwd(),
-      windowsHide: true,
-      env: {
-        ...process.env,
-        DATA_DIR: dir,
-        PORT: String(port),
-        NODE_ENV: "production",
-        GEMINI_API_KEY: "",
-        MONTHLY_CHECK_LIMIT: "20",
-        ...extra,
-      },
-      stdio: ["ignore", "pipe", "pipe"],
-    });
-    child.stdout?.on("data", (d) => (output += d));
-    child.stderr?.on("data", (d) => (output += d));
-    for (let n = 0; n < 200; n++) {
-      try {
-        const res = await fetch(`http://127.0.0.1:${port}/api/health`);
-        if (res.ok) return;
-      } catch {}
-      if (child.exitCode !== null) throw Error(output);
-      await new Promise((r) => setTimeout(r, 50));
-    }
-    throw Error("Server did not start: " + output);
-  };
-  const stop = async () => {
-    if (child.exitCode === null) {
-      child.kill();
-      await new Promise((r) => child.once("exit", r));
-    }
-  };
-  await start();
-  return { dir, url: `http://127.0.0.1:${port}`, start, stop };
-}
 function client(url: string) {
   let cookie = "";
   return async (endpoint: string, body?: any, method = "POST") => {
     const res = await fetch(url + endpoint, {
       method: body === undefined ? "GET" : method,
-      headers: { "Content-Type": "application/json", Cookie: cookie },
+      headers: {
+        "Content-Type": "application/json",
+        Connection: "close",
+        Cookie: cookie,
+      },
       body: body === undefined ? undefined : JSON.stringify(body),
     });
     const next = res.headers.get("set-cookie");
@@ -68,7 +28,7 @@ test(
   { timeout: 60000 },
   async (t) => {
     const f = await fixture();
-    t.after(() => f.stop());
+    t.after(() => f.cleanup());
     const teacher = client(f.url),
       maria = client(f.url),
       jose = client(f.url),
@@ -229,6 +189,7 @@ test(
       evalResult.data.evaluation.criteria.every((c: any) => c.score === null),
     );
     assert.equal(evalResult.data.evaluation.method, "teacher-review");
+    lia = evalResult.data.story;
     const oldText = lia.chapters[0].text;
     const edit = await maria(`/api/stories/${lia.id}/actions`, {
       version: lia.version,
@@ -242,7 +203,8 @@ test(
     assert.equal(edit.status, 200);
     lia = edit.data;
     assert.equal(Object.keys(lia.resolutions).length, 0);
-    assert.notEqual(lia.checkedRevision, lia.revision);
+    assert.equal(lia.checkedRevision, lia.revision);
+    assert.equal(lia.checkMethod, "local-auto");
     assert.equal(
       (
         await maria(`/api/stories/${lia.id}/actions`, {

@@ -1,7 +1,7 @@
 {
   "name": "kwentohabi",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
@@ -11,20 +11,26 @@
     "lint": "tsc --noEmit",
     "start": "tsx server.ts",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:browser": "npm run build && node tests/browser-check.mjs",
+    "test:browser": "npm run build && node tests/browser-check.mjs && node tests/browser-round2.mjs",
     "start:production": "tsx server.ts --production",
-    "format": "prettier --write src server server.ts tests vite.config.ts"
+    "format": "prettier --write src server scripts server.ts tests vite.config.ts",
+    "storage:backup": "node scripts/storage.mjs backup",
+    "storage:inspect": "node scripts/storage.mjs inspect",
+    "storage:restore": "node scripts/storage.mjs restore"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "lucide-react": "^0.546.0",
+    "mammoth": "^1.13.0",
+    "pdf-parse": "^2.4.5",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "tsx": "^4.21.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.14.0",
     "@playwright/test": "^1.65.1",
     "@tailwindcss/vite": "^4.3.3",
     "@types/express": "^4.17.21",
@@ -34,6 +40,7 @@
     "@vitejs/plugin-react": "^6.1.1",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.28.2",
+    "fflate": "^0.8.3",
     "prettier": "^3.10.1",
     "tailwindcss": "^4.3.3",
     "typescript": "^7.0.2",

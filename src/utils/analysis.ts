@@ -5,10 +5,36 @@ import type {
   StoryFact,
   RubricStandard,
   Evaluation,
+  AnalysisCoverage,
 } from "../types";
 
 export const LIMITATION =
   "Limited English/Filipino pattern check. Missing facts or flags do not establish consistency or suitability. Teacher review is required.";
+export const ANALYSIS_LIMITS = {
+  facts: 200,
+  conflicts: 80,
+  flags: 60,
+  quoteLength: 320,
+};
+export function coverage(truncated: boolean): AnalysisCoverage {
+  return {
+    truncated,
+    limits: ANALYSIS_LIMITS,
+    notice: truncated
+      ? "Review is incomplete: evidence was capped to keep the classroom workspace responsive. Review the full manuscript; narrow the assignment or ask the teacher."
+      : "",
+  };
+}
+function excerpt(quote: string, index = 0) {
+  const start = Math.max(0, index - 60);
+  return quote.slice(start, start + ANALYSIS_LIMITS.quoteLength);
+}
+function safetyContext(quote: string) {
+  return quote.replace(
+    /\b(?:blood (?:test|pressure|donor|type|sugar|cells?|bank)|donat(?:e|ed|ing) blood|pagsusuri (?:ng|sa) dugo|presyon ng dugo|hit (?:the |a )?(?:target|ball|mark|home run)|fruit punch|punch bowl|(?:fight|fought) for (?:rights|education|justice))\b/gi,
+    (match) => " ".repeat(match.length),
+  );
+}
 export const evidenceId = (...parts: string[]) =>
   parts.map((p) => encodeURIComponent(p)).join("|");
 
@@ -19,6 +45,7 @@ export function localAnalyze(
 ) {
   const facts: StoryFact[] = [];
   const flags: SafetyFlag[] = [];
+  let truncated = false;
   const add = (
     ch: Chapter,
     subject: string,
@@ -26,6 +53,10 @@ export function localAnalyze(
     value: string,
     quote: string,
   ) => {
+    if (facts.length >= ANALYSIS_LIMITS.facts) {
+      truncated = true;
+      return;
+    }
     const id = evidenceId(
       ch.id,
       ch.authorId,
@@ -110,12 +141,19 @@ export function localAnalyze(
         ],
       ];
       for (const [re, read] of rules)
-        for (const m of quote.matchAll(re)) add(ch, ...read(m), quote);
+        for (const m of quote.matchAll(re))
+          add(ch, ...read(m), excerpt(quote, m.index));
       const necklace = quote.match(
         /\b(?:kanyang|niya ang kanyang) (tanso|pilak|ginto)(?: na)? kwintas\b/i,
       );
       if (subject && necklace)
-        add(ch, subject, "necklace material", necklace[1], quote);
+        add(
+          ch,
+          subject,
+          "necklace material",
+          necklace[1],
+          excerpt(quote, necklace.index),
+        );
 
       const safety: [SafetyFlag["category"], RegExp, SafetyFlag["severity"]][] =
         [
@@ -152,12 +190,19 @@ export function localAnalyze(
         ];
       for (const [category, re, severity] of safety) {
         if (severity === "mild" && level !== "strict") continue;
-        if (!re.test(quote)) continue;
+        const context = category === "violence" ? safetyContext(quote) : quote;
+        const cue = re.exec(context);
+        if (!cue) continue;
+        if (flags.length >= ANALYSIS_LIMITS.flags) {
+          truncated = true;
+          break;
+        }
+        const sourceQuote = excerpt(quote, cue.index);
         flags.push({
-          key: evidenceId(ch.id, category, quote),
+          key: evidenceId(ch.id, category, sourceQuote),
           chapter: ch.id,
           author: ch.authorId,
-          quote,
+          quote: sourceQuote,
           category,
           severity,
           reason:
@@ -170,7 +215,7 @@ export function localAnalyze(
     }
   }
   const contradictions: Contradiction[] = [];
-  for (let i = 0; i < facts.length; i++)
+  pairs: for (let i = 0; i < facts.length; i++)
     for (let j = i + 1; j < facts.length; j++) {
       const a = facts[i],
         b = facts[j];
@@ -178,9 +223,14 @@ export function localAnalyze(
         a.subject.toLowerCase() !== b.subject.toLowerCase() ||
         a.attribute !== b.attribute ||
         a.value.toLowerCase() === b.value.toLowerCase() ||
-        (mode === "shared" && a.authorId === b.authorId)
+        (mode === "shared" && a.authorId === b.authorId) ||
+        (a.chapterId === b.chapterId && a.quote === b.quote)
       )
         continue;
+      if (contradictions.length >= ANALYSIS_LIMITS.conflicts) {
+        truncated = true;
+        break pairs;
+      }
       const side = (f: StoryFact) => ({
         chapter: f.chapterId,
         author: f.authorId,
@@ -206,13 +256,20 @@ export function localAnalyze(
     contradictions,
     flags,
     storyWikiSummary: "",
+    coverage: coverage(truncated),
     notice: LIMITATION,
   };
 }
 
-export function validateAnalysis(data: any, chapters: Chapter[]) {
+export function validateAnalysis(
+  data: any,
+  chapters: Chapter[],
+  mode: string = "shared",
+) {
   const text = (v: unknown) =>
-    typeof v === "string" && v.length > 0 && v.length <= 60000;
+    typeof v === "string" &&
+    v.length > 0 &&
+    v.length <= ANALYSIS_LIMITS.quoteLength;
   const source = (chapter: unknown, author: unknown, quote: unknown) =>
     chapters.some(
       (c) =>
@@ -251,6 +308,11 @@ export function validateAnalysis(data: any, chapters: Chapter[]) {
   const contradictions: Contradiction[] = data.contradictions.map((c: any) => {
     if (
       ![c.subject, c.attribute].every(text) ||
+      !c.a ||
+      !c.b ||
+      (mode === "shared" && c.a.author === c.b.author) ||
+      (c.a.chapter === c.b.chapter && c.a.quote === c.b.quote) ||
+      c.a.value?.toLowerCase() === c.b.value?.toLowerCase() ||
       ![c.a, c.b].every(
         (s) => s && text(s.value) && source(s.chapter, s.author, s.quote),
       )
@@ -288,10 +350,21 @@ export function validateAnalysis(data: any, chapters: Chapter[]) {
       decision: undefined,
     };
   });
+  const unique = <T>(items: T[], key: (item: T) => string) => [
+    ...new Map(items.map((item) => [key(item), item])).values(),
+  ];
   return {
-    facts,
-    contradictions,
-    flags,
+    facts: unique(facts, (f) => f.id).slice(0, ANALYSIS_LIMITS.facts),
+    contradictions: unique(contradictions, (c) => c.key).slice(
+      0,
+      ANALYSIS_LIMITS.conflicts,
+    ),
+    flags: unique(flags, (f) => f.key).slice(0, ANALYSIS_LIMITS.flags),
+    coverage: coverage(
+      facts.length > ANALYSIS_LIMITS.facts ||
+        contradictions.length > ANALYSIS_LIMITS.conflicts ||
+        flags.length > ANALYSIS_LIMITS.flags,
+    ),
     storyWikiSummary:
       typeof data.storyWikiSummary === "string"
         ? data.storyWikiSummary.slice(0, 2000)
@@ -315,16 +388,17 @@ export function reviewEvaluation(
       weight: c.weight,
       score: null,
       feedback: tl
-        ? `Suriin ang draft ayon sa: ${c.description}`
-        : `Review the draft against: ${c.description}`,
+        ? `Suriin ang draft ayon sa: ${c.description.slice(0, 1500)}`
+        : `Review the draft against: ${c.description.slice(0, 1500)}`,
       evidence: chapters
         .filter((ch) => ch.text.trim())
         .slice(0, 2)
         .map((ch) => ({
           chapterId: ch.id,
-          quote:
-            ch.text.match(/[^.!?]+[.!?]*/)?.[0]?.trim() ||
-            ch.text.slice(0, 300),
+          quote: (ch.text.match(/[^.!?]+[.!?]*/)?.[0]?.trim() || ch.text).slice(
+            0,
+            ANALYSIS_LIMITS.quoteLength,
+          ),
         })),
     })),
     notice: tl

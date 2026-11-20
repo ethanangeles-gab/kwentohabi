@@ -1,13 +1,27 @@
-import React, { useState } from "react";
-import type { Chapter, SessionUser, StoryWorkspace } from "../types";
-import { useDraft } from "../utils/client";
+import React, { useRef, useState } from "react";
+import type {
+  Chapter,
+  ChapterRevision,
+  SessionUser,
+  StoryWorkspace,
+} from "../types";
+import { api, downloadFile, useDraft } from "../utils/client";
+import {
+  blankDraft,
+  editChapter,
+  newChapter,
+  finishChapterSave,
+  type WritingBuffers,
+  type WritingDraft,
+} from "../utils/writingDrafts";
+import { Dialog } from "./Dialog";
 
 type Props = {
   story: StoryWorkspace;
   user: SessionUser;
   users: SessionUser[];
   action: (kind: string, payload: any) => Promise<StoryWorkspace>;
-  onRunCheck: () => Promise<void>;
+  onRunCheck: (useAI?: boolean) => Promise<void>;
   checking: boolean;
   saving: boolean;
   lang: "tl" | "en";
@@ -24,13 +38,55 @@ export function StudentCanvas({
 }: Props) {
   const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
   const prefix = `kwentohabi-draft:${user.id}:${story.id}`;
-  const [draft, setDraft] = useDraft(prefix, {
-    title: "",
-    text: "",
-    chapterId: "",
-    baseText: "",
-  });
-  const [notes, setNotes] = useDraft<Record<string, string>>(
+  let legacy = blankDraft();
+  try {
+    legacy = JSON.parse(localStorage.getItem(prefix) || "null") || legacy;
+  } catch {}
+  const [buffers, setBuffers, storage] = useDraft<WritingBuffers>(
+    prefix + ":buffers",
+    { activeKey: "new", buffers: { new: legacy } },
+  );
+  const draft = buffers.buffers[buffers.activeKey] || blankDraft();
+  const history = useRef<
+    Record<string, { past: WritingDraft[]; future: WritingDraft[] }>
+  >({});
+  const setDraft = (next: WritingDraft) => {
+    const stack = (history.current[buffers.activeKey] ??= {
+      past: [],
+      future: [],
+    });
+    stack.past.push({ ...draft });
+    if (stack.past.length > 30) stack.past.shift();
+    stack.future = [];
+    setBuffers((previous) => ({
+      ...previous,
+      buffers: { ...previous.buffers, [previous.activeKey]: next },
+    }));
+  };
+  const moveHistory = (direction: "past" | "future") => {
+    const stack = history.current[buffers.activeKey];
+    const entry = stack?.[direction].pop();
+    if (!entry) return;
+    stack[direction === "past" ? "future" : "past"].push({ ...draft });
+    setBuffers((previous) => ({
+      ...previous,
+      buffers: {
+        ...previous.buffers,
+        [previous.activeKey]: {
+          ...draft,
+          text: entry.text,
+          title: entry.title,
+        },
+      },
+    }));
+  };
+  const [useAI, setUseAI] = useState(true);
+  const [focusMode, setFocusMode] = useState(false),
+    [autoCheck, setAutoCheck] = useDraft(prefix + ":auto-check", true);
+  const [versions, setVersions] = useState<ChapterRevision[] | null>(null),
+    [historyChapter, setHistoryChapter] = useState<Chapter | null>(null),
+    [discard, setDiscard] = useState(false);
+  const [notes, setNotes, noteStorage] = useDraft<Record<string, string>>(
     prefix + ":notes",
     {},
   );
@@ -105,7 +161,13 @@ export function StudentCanvas({
     );
   };
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start">
+    <div
+      className={
+        focusMode
+          ? "max-w-4xl mx-auto space-y-5"
+          : "grid gap-6 xl:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-start"
+      }
+    >
       <section className="space-y-4 min-w-0">
         <div className="flex flex-wrap justify-between items-center gap-2">
           <h3 className="text-xl font-bold font-serif">
@@ -127,89 +189,143 @@ export function StudentCanvas({
             )}
           </p>
         )}
-        {story.chapters.map((ch) => (
-          <article
-            key={ch.id}
-            id={`chapter-${ch.id}`}
-            className="card space-y-3 min-w-0"
-          >
-            <div className="flex flex-wrap justify-between gap-2 text-xs text-slate-500">
-              <span>
-                {name(ch.authorId)} ·{" "}
-                {new Date(ch.at).toLocaleDateString(
-                  lang === "tl" ? "fil-PH" : "en-PH",
-                  { timeZone: "Asia/Manila" },
+        {!focusMode &&
+          story.chapters.map((ch) => (
+            <article
+              key={ch.id}
+              id={`chapter-${ch.id}`}
+              className="card space-y-3 min-w-0"
+            >
+              <div className="flex flex-wrap justify-between gap-2 text-xs text-slate-500">
+                <span>
+                  {name(ch.authorId)} ·{" "}
+                  {new Date(ch.at).toLocaleDateString(
+                    lang === "tl" ? "fil-PH" : "en-PH",
+                    { timeZone: "Asia/Manila" },
+                  )}
+                </span>
+                {ch.authorId === user.id && (
+                  <button
+                    className="underline"
+                    onClick={() =>
+                      setBuffers((previous) => editChapter(previous, ch))
+                    }
+                  >
+                    {t("I-edit sa ibaba", "Edit below")}
+                  </button>
                 )}
-              </span>
-              {ch.authorId === user.id && (
-                <button
-                  className="underline"
-                  onClick={() =>
-                    setDraft({
-                      chapterId: ch.id,
-                      text: ch.text,
-                      title: ch.title,
-                      baseText: ch.text,
-                    })
-                  }
-                >
-                  {t("I-edit sa ibaba", "Edit below")}
-                </button>
-              )}
-            </div>
-            <h4 className="font-bold">{ch.title}</h4>
-            {highlight(ch)}
-            {story.safetyFlags
-              .filter((f) => f.chapter === ch.id)
-              .map((f) => (
-                <div
-                  key={f.key}
-                  className={f.decision === "allow" ? "notice" : "error"}
-                >
+                {(ch.authorId === user.id || user.role === "teacher") && (
+                  <button
+                    className="underline"
+                    onClick={async () => {
+                      setError("");
+                      try {
+                        const result = await api(
+                          `/api/stories/${story.id}/chapters/${ch.id}/history`,
+                        );
+                        setHistoryChapter(ch);
+                        setVersions(result.versions);
+                      } catch (error: any) {
+                        setError(error.message);
+                      }
+                    }}
+                  >
+                    {t("Mga naunang bersyon", "Version history")}
+                  </button>
+                )}
+              </div>
+              <h4 className="font-bold">{ch.title}</h4>
+              {highlight(ch)}
+              {ch.review && (
+                <div className="notice">
                   <p className="font-semibold">
-                    {f.decision === "allow"
+                    {ch.review.status === "rework"
                       ? t(
-                          "Nirepaso at pinayagan ng guro",
-                          "Reviewed and allowed by teacher",
+                          "Hiniling na rebisyon ng guro",
+                          "Teacher requested a revision",
                         )
-                      : f.decision === "rework"
-                        ? t(
-                            "Kailangan ng rebisyon: repasuhin ang siping ito kasama ang guro.",
-                            "Revision requested: review this passage with your teacher.",
-                          )
-                        : t(
-                            "Naghihintay ng pagrepaso ng guro",
-                            "Pending teacher review",
-                          )}
+                      : t("Nirepaso ng guro", "Reviewed by your teacher")}
                   </p>
-                  <p className="mt-1 text-xs">
-                    {t(
-                      "Pahiwatig sa teksto; kailangan ang konteksto ng guro. Walang awtomatikong referral.",
-                      "Text cue requiring teacher context. No automatic referral has been sent.",
-                    )}
+                  <p className="mt-1 text-sm whitespace-pre-wrap">
+                    {ch.review.feedback}
                   </p>
                 </div>
-              ))}
-          </article>
-        ))}
+              )}
+              {story.safetyFlags
+                .filter((f) => f.chapter === ch.id)
+                .map((f) => (
+                  <div
+                    key={f.key}
+                    className={f.decision === "allow" ? "notice" : "error"}
+                  >
+                    <p className="font-semibold">
+                      {f.decision === "allow"
+                        ? t(
+                            "Nirepaso at pinayagan ng guro",
+                            "Reviewed and allowed by teacher",
+                          )
+                        : f.decision === "rework"
+                          ? t(
+                              "Kailangan ng rebisyon: repasuhin ang siping ito kasama ang guro.",
+                              "Revision requested: review this passage with your teacher.",
+                            )
+                          : t(
+                              "Naghihintay ng pagrepaso ng guro",
+                              "Pending teacher review",
+                            )}
+                    </p>
+                    <p className="mt-1 text-xs">
+                      {t(
+                        "Pahiwatig sa teksto; kailangan ang konteksto ng guro. Walang awtomatikong referral.",
+                        "Text cue requiring teacher context. No automatic referral has been sent.",
+                      )}
+                    </p>
+                  </div>
+                ))}
+            </article>
+          ))}
         {user.role === "student" && (
           <form
-            className="card space-y-4"
+            id="chapter-editor"
+            className="card space-y-4 writing-surface"
             onSubmit={async (e) => {
               e.preventDefault();
-              const ok = await send(
-                draft.chapterId ? "chapter-edit" : "chapter-add",
-                {
-                  title:
-                    draft.title ||
-                    `${t("Kabanata", "Chapter")} ${story.chapters.length + 1}`,
-                  text: draft.text,
-                  chapterId: draft.chapterId,
-                  baseText: draft.baseText,
-                },
-              );
-              if (ok)
-                setDraft({ title: "", text: "", chapterId: "", baseText: "" });
+              const snapshot = { ...draft },
+                sourceKey = buffers.activeKey;
+              setError("");
+              try {
+                const savedStory = await action(
+                  snapshot.chapterId ? "chapter-edit" : "chapter-add",
+                  {
+                    title:
+                      snapshot.title ||
+                      `${t("Kabanata", "Chapter")} ${story.chapters.length + 1}`,
+                    text: snapshot.text,
+                    chapterId: snapshot.chapterId,
+                    baseText: snapshot.baseText,
+                    autoCheck,
+                  },
+                );
+                const saved = snapshot.chapterId
+                  ? savedStory.chapters.find(
+                      (ch) => ch.id === snapshot.chapterId,
+                    )
+                  : savedStory.chapters.find(
+                      (ch) =>
+                        !story.chapters.some((old) => old.id === ch.id) &&
+                        ch.authorId === user.id &&
+                        ch.text === snapshot.text.trim(),
+                    );
+                if (!saved)
+                  throw Error(
+                    "The saved chapter could not be verified. Your draft is retained.",
+                  );
+                setBuffers((previous) =>
+                  finishChapterSave(previous, sourceKey, snapshot, saved),
+                );
+              } catch (error: any) {
+                setError(error.message);
+              }
             }}
           >
             <h3 className="font-bold text-lg">
@@ -217,19 +333,89 @@ export function StudentCanvas({
                 ? t("Baguhin ang iyong kabanata", "Revise your chapter")
                 : t("Magdagdag ng kabanata", "Add a chapter")}
             </h3>
-            <p className="text-xs text-slate-500">
-              {t("May-akda", "Writing as")}: {user.name} ·{" "}
-              {t(
-                "Ang draft ay iniingatan sa browser habang nagsusulat.",
-                "Drafts are retained in this browser while you write.",
-              )}
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="btn-light"
+                onClick={() => setFocusMode(!focusMode)}
+              >
+                {focusMode
+                  ? t("Ipakita ang kuwento", "Show manuscript")
+                  : t("Pokus sa pagsusulat", "Focus writing")}
+              </button>
+              <button
+                type="button"
+                className="btn-light"
+                onClick={() => setBuffers((previous) => newChapter(previous))}
+              >
+                {t("Bagong draft", "New chapter draft")}
+              </button>
+              <button
+                type="button"
+                className="btn-light"
+                disabled={!history.current[buffers.activeKey]?.past.length}
+                onClick={() => moveHistory("past")}
+              >
+                {t("I-undo", "Undo")}
+              </button>
+              <button
+                type="button"
+                className="btn-light"
+                disabled={!history.current[buffers.activeKey]?.future.length}
+                onClick={() => moveHistory("future")}
+              >
+                {t("I-redo", "Redo")}
+              </button>
+            </div>
+            <label className="field">
+              {t("Mga iniingatang draft", "Retained drafts")}
+              <select
+                aria-label={t("Mga iniingatang draft", "Retained drafts")}
+                value={buffers.activeKey}
+                onChange={(e) =>
+                  setBuffers((previous) => ({
+                    ...previous,
+                    activeKey: e.target.value,
+                  }))
+                }
+              >
+                {Object.entries(buffers.buffers).map(([key, value]) => (
+                  <option key={key} value={key}>
+                    {key === "new"
+                      ? t("Bagong kabanata", "New chapter")
+                      : value.title || key}{" "}
+                    {value.text !== value.baseText ? "?" : ""}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <p className="text-xs text-slate-600">
+              {t("May-akda", "Writing as")}: {user.name} ?{" "}
+              {draft.text.trim().split(/\s+/).filter(Boolean).length}{" "}
+              {t("salita", "words")}
+            </p>
+            <p
+              role={storage.persisted ? "status" : "alert"}
+              className={
+                storage.persisted ? "text-xs text-emerald-800" : "error"
+              }
+            >
+              {storage.persisted
+                ? t(
+                    "Awtomatikong iniingatan ang draft sa browser. I-save upang isumite sa guro.",
+                    "Draft autosaved in this browser. Save chapter to submit it to your teacher.",
+                  )
+                : t(
+                    "Hindi nai-save sa browser ang draft. Panatilihing bukas ang pahina at mag-save sa server o mag-download ng kopya.",
+                    "Draft not saved locally. Keep this page open and save to the server or download a copy.",
+                  )}
             </p>
             <label className="field">
               {t("Pamagat ng kabanata", "Chapter title")}
               <input
                 value={draft.title}
                 maxLength={200}
-                disabled={Boolean(draft.chapterId)}
+                disabled={story.status !== "active"}
                 onChange={(e) => setDraft({ ...draft, title: e.target.value })}
               />
             </label>
@@ -237,7 +423,8 @@ export function StudentCanvas({
               {t("Teksto ng kabanata", "Chapter text")}
               <textarea
                 aria-label={t("Teksto ng kabanata", "Chapter text")}
-                rows={8}
+                disabled={story.status !== "active"}
+                rows={focusMode ? 18 : 10}
                 required
                 maxLength={50000}
                 value={draft.text}
@@ -246,35 +433,57 @@ export function StudentCanvas({
             </label>
             <p className="text-xs text-slate-500">
               {t(
-                "Pagkatapos mag-save, patakbuhin ang continuity check. Manwal ang mga rebisyon.",
-                "After saving, run the continuity check. Manuscript revisions are manual.",
+                "Sinusuri ng lokal na parser pagkatapos mag-save kung pinagana. Ikaw ang gumagawa ng rebisyon.",
+                "The local parser checks after saving when enabled. You make every manuscript revision.",
               )}
             </p>
             <div className="flex flex-wrap gap-2">
-              <button className="btn" disabled={saving || !draft.text.trim()}>
+              <button
+                className="btn"
+                disabled={
+                  saving || !draft.text.trim() || story.status !== "active"
+                }
+              >
                 {t("I-save ang kabanata", "Save chapter")}
               </button>
-              {draft.chapterId && (
-                <button
-                  type="button"
-                  className="btn-light"
-                  onClick={() =>
-                    setDraft({
-                      title: "",
-                      text: "",
-                      chapterId: "",
-                      baseText: "",
-                    })
-                  }
-                >
-                  {t("Kanselahin ang pag-edit", "Cancel edit")}
-                </button>
-              )}
+              <button
+                type="button"
+                className="btn-light"
+                onClick={() =>
+                  downloadFile(
+                    "kwentohabi-draft.txt",
+                    `${draft.title}\n\n${draft.text}`,
+                  )
+                }
+              >
+                {t("I-download ang draft", "Download draft")}
+              </button>
+              <button
+                type="button"
+                className="btn-light"
+                onClick={() => setDiscard(true)}
+                disabled={saving || !draft.text}
+              >
+                {t("Itapon ang draft na ito", "Discard this draft")}
+              </button>
             </div>
+            <label className="flex items-start gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={autoCheck}
+                onChange={(e) => setAutoCheck(e.target.checked)}
+              />
+              {t(
+                "Suriin ang continuity pagkatapos mag-save (lokal, walang AI quota).",
+                "Check continuity automatically after saving (local, no AI allowance).",
+              )}
+            </label>
           </form>
         )}
       </section>
-      <aside className="space-y-4 min-w-0 xl:sticky xl:top-4">
+      <aside
+        className={`space-y-4 min-w-0 xl:sticky xl:top-4 ${focusMode ? "hidden" : ""}`}
+      >
         <div className="card bg-slate-900 text-white space-y-3">
           <h3 className="font-bold text-lg">
             {t("Pagsusuri ng continuity", "Continuity review")}
@@ -291,7 +500,7 @@ export function StudentCanvas({
           </p>
           <button
             className="btn bg-amber-500 text-slate-950 w-full"
-            onClick={onRunCheck}
+            onClick={() => onRunCheck(useAI)}
             disabled={checking || saving || story.chapters.length === 0}
           >
             {checking
@@ -305,11 +514,38 @@ export function StudentCanvas({
             )}
           </p>
         </div>
+        {story.coverage?.truncated && (
+          <p role="status" className="notice">
+            {t(
+              "Hindi kumpleto ang pagsusuri dahil nilimitahan ang ebidensya. Repasuhin ang buong kuwento kasama ang guro.",
+              story.coverage.notice,
+            )}
+          </p>
+        )}
+        {!noteStorage.persisted && (
+          <p role="alert" className="error">
+            {t(
+              "Hindi naitatabi sa browser ang tala. I-save ito sa server.",
+              "Perspective draft not saved locally. Save your note to the server.",
+            )}
+          </p>
+        )}
         {error && (
           <p role="alert" className="error">
             {error}
           </p>
         )}
+        <label className="flex gap-2 text-sm items-start">
+          <input
+            type="checkbox"
+            checked={useAI}
+            onChange={(e) => setUseAI(e.target.checked)}
+          />
+          {t(
+            "Gamitin ang opsyonal na AI sa manual check kung pinahihintulutan.",
+            "Use optional AI for manual checks when authorized.",
+          )}
+        </label>
         <div className="card space-y-4">
           <h3 className="text-lg font-bold">
             {t("Talakayin ang mga detalye", "Discuss conflicting details")}
@@ -422,6 +658,15 @@ export function StudentCanvas({
                       )}
                     </div>
                   ))}
+                  {story.resolutions[currentConflict.key]?.type ===
+                    "teacher-decided" && (
+                    <p className="badge">
+                      {t(
+                        "Naka-lock ang pasya ng guro. Guro lamang ang maaaring magbukas muli.",
+                        "Teacher decision locked. Only the teacher can reopen it.",
+                      )}
+                    </p>
+                  )}
                   {story.resolutions[currentConflict.key] && (
                     <p className="notice">
                       {story.resolutions[currentConflict.key].outcome === "both"
@@ -449,8 +694,8 @@ export function StudentCanvas({
                       <>
                         <p className="text-xs text-slate-500">
                           {t(
-                            "I-save muna ang tala ng bawat may-akda (10 karakter o higit). Ang pasya ay hindi awtomatikong nagbabago ng kuwento.",
-                            "Each author must save a note of at least 10 characters first. Decisions do not automatically change the manuscript.",
+                            "I-save ang sariling tala upang humingi ng gabay. Kailangan ang dalawang tala upang magkasundo. Guro lamang ang maaaring magbukas muli ng kanyang pasya.",
+                            "Save your own note to ask the teacher. Adopting versions needs both notes. Teacher decisions stay locked until the teacher reopens them.",
                           )}
                         </p>
                         <div className="flex flex-wrap gap-2">
@@ -462,10 +707,17 @@ export function StudentCanvas({
                                 disabled={
                                   saving ||
                                   stale ||
-                                  ![
-                                    currentConflict.a.author,
-                                    currentConflict.b.author,
-                                  ].every(
+                                  story.status !== "active" ||
+                                  story.resolutions[currentConflict.key]
+                                    ?.type === "teacher-decided" ||
+                                  !(
+                                    choice === "teacher"
+                                      ? [user.id]
+                                      : [
+                                          currentConflict.a.author,
+                                          currentConflict.b.author,
+                                        ]
+                                  ).every(
                                     (id) =>
                                       (
                                         story.notes[currentConflict.key]?.[
@@ -500,6 +752,91 @@ export function StudentCanvas({
           )}
         </div>
       </aside>
+      {discard && (
+        <Dialog
+          title={t("Itapon ang draft na ito?", "Discard this draft?")}
+          onClose={() => setDiscard(false)}
+        >
+          <p className="mb-4">
+            {t(
+              "Ang kasalukuyang buffer lamang ang aalisin. Mananatili ang mga na-save na kabanata at ibang draft.",
+              "Only this buffer will be cleared. Saved chapters and other drafts remain.",
+            )}
+          </p>
+          <button
+            className="btn"
+            onClick={() => {
+              setBuffers((previous) => {
+                const retained = { ...previous.buffers };
+                delete retained[previous.activeKey];
+                retained.new ??= blankDraft();
+                return { activeKey: "new", buffers: retained };
+              });
+              setDiscard(false);
+            }}
+          >
+            {t("Itapon ang draft", "Discard draft")}
+          </button>
+        </Dialog>
+      )}
+      {versions && historyChapter && (
+        <Dialog
+          title={`${t("Mga bersyon", "Version history")}: ${historyChapter.title}`}
+          onClose={() => setVersions(null)}
+        >
+          <p className="text-sm text-slate-600 mb-4">
+            {t(
+              "Mananatili ang hanggang 20 na bersyon bawat kabanata sa nakatakdang limitasyon ng archive. Ang pagbawi ay bagong draft muna.",
+              "Up to 20 saved versions per chapter within the archive size limit. Restoring first creates a draft.",
+            )}
+          </p>
+          {versions.length === 0 && (
+            <p>
+              {t("Wala pang naitalang pagbabago.", "No saved revisions yet.")}
+            </p>
+          )}
+          {versions.map((item) => (
+            <article key={item.revisionId} className="border-b py-3 space-y-2">
+              <p className="text-xs">
+                {new Date(item.savedAt).toLocaleString(
+                  lang === "tl" ? "fil-PH" : "en-PH",
+                )}
+              </p>
+              <p className="story-prose text-sm">{item.text}</p>
+              {historyChapter.authorId === user.id && (
+                <button
+                  className="btn-light"
+                  onClick={() => {
+                    setBuffers((previous) => {
+                      const selected = editChapter(previous, historyChapter);
+                      const key = `restore:${item.revisionId}:${Date.now()}`;
+                      return {
+                        ...selected,
+                        activeKey: key,
+                        buffers: {
+                          ...selected.buffers,
+                          [key]: {
+                            title: item.title,
+                            text: item.text,
+                            chapterId: historyChapter.id,
+                            baseText: historyChapter.text,
+                          },
+                        },
+                      };
+                    });
+                    setVersions(null);
+                  }}
+                >
+                  {t(
+                    "Gawing draft ang bersyong ito",
+                    "Restore this version as a draft",
+                  )}
+                </button>
+              )}
+            </article>
+          ))}
+        </Dialog>
+      )}
     </div>
   );
 }

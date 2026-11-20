@@ -1,6 +1,12 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import http from "node:http";
+import { client as apiClient } from "./runtime.mjs";
+import {
+  createTestDirectory,
+  removeTestDirectory,
+  stopChild,
+} from "./runtime.mjs";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir } from "node:fs/promises";
 import path from "node:path";
@@ -18,7 +24,7 @@ test(
   { timeout: 60000 },
   async (t) => {
     await mkdir("tmp", { recursive: true });
-    const dir = await mkdtemp(path.resolve("tmp/qa-model-")),
+    const dir = await createTestDirectory("model"),
       port = await freePort();
     let responseData: any = {
         facts: [],
@@ -60,11 +66,14 @@ test(
         GEMINI_API_KEY: "qa-fake-key",
         GEMINI_BASE_URL: `http://127.0.0.1:${modelPort}`,
         MONTHLY_CHECK_LIMIT: "100",
+        APP_ORIGIN: "",
+        TRUST_PROXY: "",
       },
       stdio: "ignore",
     });
     t.after(async () => {
-      child.kill();
+      await stopChild(child);
+      await removeTestDirectory(dir);
       model.closeAllConnections();
       await new Promise<void>((r) => model.close(() => r()));
     });
@@ -129,16 +138,46 @@ test(
     assert(lia.facts.every((f: any) => f.subject !== "Invented"));
     responseData = {
       facts: [],
+      flags: [],
+      contradictions: [
+        {
+          subject: "Lia",
+          attribute: "eye color",
+          a: {
+            chapter: "c1",
+            author: "maria",
+            value: "brown",
+            quote: lia.chapters[0].text,
+          },
+          b: {
+            chapter: "c1",
+            author: "maria",
+            value: "green",
+            quote: lia.chapters[0].text,
+          },
+        },
+      ],
+    };
+    const impossible = await request("/api/gemini/analyze", {
+      storyId: lia.id,
+      version: lia.version,
+    });
+    assert.equal(impossible.status, 200);
+    assert.equal(impossible.data.story.checkMethod, "local-fallback");
+    lia = impossible.data.story;
+    responseData = {
+      facts: [],
       contradictions: [],
       flags: [],
       storyWikiSummary: "Stale result",
     };
     delay = 500;
+    const seen = received.length;
     const pending = request("/api/gemini/analyze", {
       storyId: lia.id,
       version: lia.version,
     });
-    while (received.length < 3) await sleep(10);
+    while (received.length === seen) await sleep(10);
     const edit = await request(`/api/stories/${lia.id}/actions`, {
       version: lia.version,
       action: "policy",
@@ -160,7 +199,12 @@ test(
         ...c,
         score: c.weight,
         feedback: "Evidence review",
-        evidence: [{ chapterId: "c1", quote: current.chapters[0].text }],
+        evidence: [
+          {
+            chapterId: "c1",
+            quote: current.chapters[0].text.split(". ")[0] + ".",
+          },
+        ],
       })),
     };
     const evaluated = await request("/api/evaluate", {
@@ -175,11 +219,77 @@ test(
     responseData.criteria[0].evidence[0].quote = "invented quote";
     const invalidEval = await request("/api/evaluate", {
       storyId: current.id,
-      version: current.version,
+      version: evaluated.data.story.version,
+      force: true,
     });
     assert.equal(invalidEval.data.evaluation.method, "teacher-review");
     assert(
       invalidEval.data.evaluation.criteria.every((c: any) => c.score === null),
     );
+    const added = await request("/api/users", {
+      username: "consent-learner",
+      name: "Fictional QA Learner",
+      classId: "mabini",
+    });
+    const learner = apiClient(url);
+    await learner("/api/login", {
+      username: added.data.username,
+      password: added.data.password,
+    });
+    const assignment = await request("/api/stories", {
+      title: "School authorization fixture",
+      mode: "individual",
+      classId: "mabini",
+      memberIds: [added.data.user.id],
+    });
+    const saved = await learner(`/api/stories/${assignment.data.id}/actions`, {
+      version: assignment.data.version,
+      action: "chapter-add",
+      payload: { title: "Private fixture", text: "Maya lived in Hiraya." },
+    });
+    assert.equal(saved.status, 200);
+    const requestsBefore = received.length;
+    const pendingConsent = await request("/api/gemini/analyze", {
+      storyId: saved.data.id,
+      version: saved.data.version,
+    });
+    assert.equal(pendingConsent.status, 200);
+    assert.equal(pendingConsent.data.story.checkMethod, "local");
+    assert.equal(
+      received.length,
+      requestsBefore,
+      "Pending school authorization must prevent provider calls",
+    );
+    const notice = (await request("/api/consents")).data.notice;
+    await request(`/api/users/${added.data.user.id}/consent`, {
+      status: "recorded",
+      reference: "Synthetic school authorization QA-001",
+      noticeVersion: notice.version,
+    });
+    responseData = {
+      facts: [],
+      contradictions: [],
+      flags: [],
+      storyWikiSummary: "Authorized synthetic fixture.",
+    };
+    const authorized = await request("/api/gemini/analyze", {
+      storyId: saved.data.id,
+      version: pendingConsent.data.story.version,
+    });
+    assert.equal(authorized.status, 200);
+    assert.equal(authorized.data.story.checkMethod, "gemini");
+    assert.equal(received.length, requestsBefore + 1);
+    await request(`/api/users/${added.data.user.id}/consent`, {
+      status: "declined",
+      reference: "Synthetic decline",
+      noticeVersion: notice.version,
+    });
+    const declined = await request("/api/gemini/analyze", {
+      storyId: saved.data.id,
+      version: authorized.data.story.version,
+    });
+    assert.equal(declined.status, 200);
+    assert.equal(declined.data.story.checkMethod, "local");
+    assert.equal(received.length, requestsBefore + 1);
   },
 );

@@ -289,8 +289,9 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                   4. Current Society Problem
                 </span>
                 <p className="text-slate-600">
-                  Tumutugon sa 91% Philippine learning poverty at totoong
-                  grading bottleneck ng 30+ mag-aaral sa bawat klase.
+                  Sinusubukan ang hinuha na makatutulong ang malinaw na feedback
+                  sa pagsusulat. Hindi direktang ebidensya ng creative writing
+                  outcomes ang reading statistics.
                 </p>
               </div>
             </div>
@@ -322,6 +323,11 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
                   <input
                     type="text"
+                    aria-label={
+                      lang === "tl"
+                        ? "Hanapin sa mga tanong"
+                        : "Search defense questions"
+                    }
                     value={searchDefense}
                     onChange={(e) => setSearchDefense(e.target.value)}
                     placeholder={
@@ -334,6 +340,9 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                 </div>
 
                 <select
+                  aria-label={
+                    lang === "tl" ? "Paksa ng tanong" : "Question topic"
+                  }
                   value={selectedSection}
                   onChange={(e) => setSelectedSection(e.target.value)}
                   className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-700 font-medium focus:outline-none focus:ring-1 focus:ring-indigo-500"
@@ -361,6 +370,9 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                     className="border border-slate-200 rounded-xl overflow-hidden transition-all"
                   >
                     <button
+                      aria-expanded={isOpen}
+                      aria-controls={`defense-answer-${q.id}`}
+                      id={`defense-question-${q.id}`}
                       onClick={() => toggleQuestion(q.id)}
                       className="w-full p-4 text-left bg-slate-50/70 hover:bg-slate-100 flex items-center justify-between transition-colors"
                     >
@@ -387,7 +399,12 @@ export const BmcAndDefense: React.FC<BmcAndDefenseProps> = ({ lang }) => {
                     </button>
 
                     {isOpen && (
-                      <div className="p-4 bg-white text-xs sm:text-sm text-slate-800 leading-relaxed border-t border-slate-200 space-y-2">
+                      <div
+                        id={`defense-answer-${q.id}`}
+                        role="region"
+                        aria-labelledby={`defense-question-${q.id}`}
+                        className="p-4 bg-white text-xs sm:text-sm text-slate-800 leading-relaxed border-t border-slate-200 space-y-2"
+                      >
                         <p>
                           {lang === "tl" && q.answerTl ? q.answerTl : q.answer}
                         </p>

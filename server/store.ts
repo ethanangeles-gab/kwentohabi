@@ -16,6 +16,8 @@ import type {
   RubricStandard,
   SessionUser,
   ResolutionLogEntry,
+  ConsentRecord,
+  ChapterRevision,
 } from "../src/types";
 
 export class HttpError extends Error {
@@ -63,11 +65,39 @@ export interface Database {
   rubrics: RubricStandard[];
   usage: Record<string, { month: string; count: number }>;
   sessions: Record<string, { userId: string; expires: number }>;
+  consents: Record<string, ConsentRecord>;
+  history: Record<string, ChapterRevision[]>;
 }
 const filename = path.join(
   path.resolve(process.env.DATA_DIR || "data"),
   "workspace.json",
 );
+// This backend must never run two writers against an in-memory JSON snapshot.
+const lockFile = filename + ".lock";
+fs.mkdirSync(path.dirname(filename), { recursive: true });
+if (fs.existsSync(lockFile)) {
+  const owner = Number(fs.readFileSync(lockFile, "utf8"));
+  if (!Number.isSafeInteger(owner) || owner < 1)
+    throw new Error(
+      "Invalid storage lock. Stop the server and inspect workspace.json.lock before restarting.",
+    );
+  try {
+    process.kill(owner, 0);
+    throw new Error(
+      "This DATA_DIR is already in use. Run one server process or use a different directory.",
+    );
+  } catch (error: any) {
+    if (error.code !== "ESRCH") throw error;
+    fs.unlinkSync(lockFile);
+  }
+}
+fs.writeFileSync(lockFile, String(process.pid), { flag: "wx", mode: 0o600 });
+process.once("exit", () => {
+  try {
+    if (fs.readFileSync(lockFile, "utf8") === String(process.pid))
+      fs.unlinkSync(lockFile);
+  } catch {}
+});
 export const db: Database = fs.existsSync(filename)
   ? JSON.parse(fs.readFileSync(filename, "utf8"))
   : {
@@ -78,7 +108,21 @@ export const db: Database = fs.existsSync(filename)
       rubrics: structuredClone(INITIAL_RUBRICS),
       usage: {},
       sessions: {},
+      consents: {},
+      history: {},
     };
+db.consents ??= {};
+db.history ??= {};
+for (const story of db.stories) {
+  story.evaluations ??= {};
+  story.wikiEntries ??= [];
+  story.status ??= "active";
+  story.isDemo ??= ["story-lia", "story-makiling"].includes(story.id);
+}
+for (const user of db.users)
+  user.isDemo ??= Boolean(
+    AUTHORS[user.id] && user.name === AUTHORS[user.id].name,
+  );
 export function persist() {
   fs.mkdirSync(path.dirname(filename), { recursive: true });
   const temp = filename + ".tmp",
@@ -91,8 +135,17 @@ export function persist() {
   }
   fs.renameSync(temp, filename);
 }
-export const publicUser = ({ hash, username, ...u }: UserRecord): SessionUser =>
-  u;
+export const publicUser = (u: UserRecord): SessionUser => ({
+  id: u.id,
+  name: u.name,
+  role: u.role,
+  classIds: u.classIds,
+  isDemo: u.isDemo,
+  consentStatus:
+    u.role === "student"
+      ? db.consents[u.id]?.status || (u.isDemo ? "not-required" : "pending")
+      : undefined,
+});
 export function setup(school: string, username: string, password: string) {
   if (db.users.length) fail(409, "This school is already configured. Sign in.");
   db.school = school;
@@ -103,6 +156,7 @@ export function setup(school: string, username: string, password: string) {
     hash: passwordHash(password),
     role: "teacher",
     classIds: ["mabini", "rizal"],
+    isDemo: false,
   });
   const accounts = Object.values(AUTHORS).map((a) => {
     const temporaryPassword = randomBytes(12).toString("base64url");
@@ -113,6 +167,7 @@ export function setup(school: string, username: string, password: string) {
       hash: passwordHash(temporaryPassword),
       role: "student",
       classIds: [a.id === "ethan" || a.id === "sophia" ? "rizal" : "mabini"],
+      isDemo: true,
     });
     return { username: a.id, password: temporaryPassword };
   });
@@ -122,6 +177,7 @@ export function setup(school: string, username: string, password: string) {
       classId: i === 0 ? "mabini" : "rizal",
       memberIds: [...new Set(s.chapters.map((c) => c.authorId))],
       mode: "shared",
+      isDemo: true,
     }),
   );
   persist();
@@ -152,8 +208,43 @@ export function makeStory(input: Partial<StoryWorkspace>): StoryWorkspace {
     summary: "",
     checkMethod: "unchecked",
     contributions: [],
+    evaluations: {},
+    wikiEntries: [],
+    status: "active",
+    isDemo: false,
     ...input,
   };
+}
+export function rememberChapter(
+  story: StoryWorkspace,
+  chapter: StoryWorkspace["chapters"][number],
+) {
+  const history = (db.history[story.id] ??= []);
+  if (
+    history.some(
+      (item) =>
+        item.chapterId === chapter.id &&
+        item.text === chapter.text &&
+        item.title === chapter.title,
+    )
+  )
+    return;
+  history.push({
+    ...structuredClone(chapter),
+    revisionId: randomBytes(12).toString("hex"),
+    chapterId: chapter.id,
+    savedAt: new Date().toISOString(),
+  } as ChapterRevision);
+  while (history.filter((item) => item.id === chapter.id).length > 20)
+    history.splice(
+      history.findIndex((item) => item.id === chapter.id),
+      1,
+    );
+  while (
+    history.length > 200 ||
+    history.reduce((sum, item) => sum + item.text.length, 0) > 2_000_000
+  )
+    history.shift();
 }
 export function canRead(user: SessionUser, story: StoryWorkspace) {
   return (
@@ -198,7 +289,11 @@ export function commit(story: StoryWorkspace) {
 }
 export function invalidate(story: StoryWorkspace) {
   story.revision++;
-  story.resolutions = {};
+  story.resolutions = Object.fromEntries(
+    Object.entries(story.resolutions).filter(
+      ([, resolution]) => resolution.type === "teacher-decided",
+    ),
+  );
   story.summary = "";
 }
 export const MONTHLY_LIMIT = Math.max(

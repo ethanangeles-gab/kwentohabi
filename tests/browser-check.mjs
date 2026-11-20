@@ -1,9 +1,14 @@
+import {
+  createTestDirectory,
+  removeTestDirectory,
+  stopChild,
+} from "./runtime.mjs";
 import { spawn } from "node:child_process";
 import { mkdtemp, mkdir } from "node:fs/promises";
 import path from "node:path";
 import net from "node:net";
 await mkdir("tmp", { recursive: true });
-const dataDir = await mkdtemp(path.resolve("tmp/qa-browser-"));
+const dataDir = await createTestDirectory("browser");
 const probe = net.createServer();
 await new Promise((r) => probe.listen(0, "127.0.0.1", r));
 const port = probe.address().port;
@@ -17,6 +22,8 @@ const server = spawn(process.execPath, ["--import", "tsx", "server.ts"], {
     PORT: String(port),
     GEMINI_API_KEY: "",
     MONTHLY_CHECK_LIMIT: "100",
+    APP_ORIGIN: "",
+    TRUST_PROXY: "",
   },
   stdio: "ignore",
 });
@@ -77,6 +84,10 @@ try {
       "Materials",
       "BMC & Q&A",
     ]) {
+      if (name === "BMC & Q&A")
+        await page
+          .getByText(/Help & project|Tulong at proyekto/, { exact: true })
+          .click();
       await page.getByRole("button", { name, exact: true }).click();
       await page.waitForTimeout(150);
       const layout = await page.evaluate(() => ({
@@ -97,6 +108,10 @@ try {
       "Mga materyales",
       "BMC & Q&A",
     ]) {
+      if (name === "BMC & Q&A")
+        await page
+          .getByText(/Help & project|Tulong at proyekto/, { exact: true })
+          .click();
       await page.getByRole("button", { name, exact: true }).click();
       const scroll = await page.evaluate(
         () => document.documentElement.scrollWidth,
@@ -118,6 +133,7 @@ try {
     }
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByText("Help & project", { exact: true }).click();
   await page.getByRole("button", { name: "BMC & Q&A", exact: true }).click();
   await page
     .getByRole("button", { name: "Unit Economics", exact: true })
@@ -151,6 +167,7 @@ try {
     "Add material"
   )
     throw Error("Dialog did not restore focus");
+  await page.getByText("Account", { exact: true }).first().click();
   await page.getByRole("button", { name: "Sign out", exact: true }).click();
   await page.getByLabel("Teacher / student username").fill("maria");
   await page
@@ -279,5 +296,6 @@ try {
   await browser.close();
 } finally {
   await browser?.close();
-  server.kill();
+  await stopChild(server);
+  await removeTestDirectory(dataDir);
 }

@@ -1,6 +1,6 @@
 ﻿# KwentoHabi
 
-A teacher-led writing workspace for group and private individual stories, with source-attributed continuity review, teacher references, and manual manuscript revision.
+A teacher-led writing workspace: students author their stories, teachers guide revision, and evidence-linked checks surface details worth discussing. Version 1.2 includes the second QA pass dated 20 November 2026.
 
 ## Run locally
 
@@ -8,40 +8,84 @@ Use Node.js 22.14 or newer. From this folder:
 
 ```powershell
 npm ci
-Copy-Item .env.example .env.local
+if (!(Test-Path .env.local)) { Copy-Item .env.example .env.local }
 npm run dev
 ```
 
-Open http://localhost:3000. On first launch, create the school and teacher password (at least 12 characters). Setup generates separate sample student accounts and displays their random passwords once. Save those details privately. Teachers can add real students or reset their passwords from **Teacher review > Class roster**. Every user can change their own password. Passwords are hashed; there are no shared default credentials.
+Open http://localhost:3000. First-run setup creates the school and teacher account. Use a password of at least 12 characters. Separate fictional sample accounts receive random passwords shown once; save those privately. Add actual learners through **Teacher review > Manage classroom accounts** rather than treating fictional sample accounts as real student records. Every user can change their password under **Account**. Teachers can reset assigned students' passwords and clear their failed-login lock; resets revoke that student's other sessions.
 
-Only initialize a school you are authorized to administer. The server binds to `127.0.0.1` by default, so complete first-run setup before allowing network access.
+The server binds to `127.0.0.1` by default. Complete setup before allowing network access. On Windows, stop a development process before running `npm ci` if native build-library files are locked. Existing `.env.local` settings and credentials should be preserved.
 
-The two sample classes are Mabini (Grade 9) and Rizal (Grade 10). Seed chapters are examples, initially marked unchecked; they do not count as new weekly contributions. Teachers create shared assignments with selected class members. Students can create private individual stories visible only to themselves and their assigned teacher.
+## Writing and review
 
-## Configuration
+- Student and teacher home screens prioritize their next action. Assignment cards distinguish private/group work, deadlines, lifecycle status, and fictional examples. Participation bars count members with a saved chapter; they are not a measure of effort or learning.
+- New chapters and existing-chapter revisions have separate retained buffers. Opening another chapter does not discard unfinished writing. Successful saves acknowledge their submitted snapshot; text typed while waiting remains a draft of the saved chapter.
+- Drafts autosave **in this browser**, not automatically as submitted chapters. A visible warning appears when browser storage is unavailable/full. Download a copy when needed. Save chapter submits it to the server. Undo/redo and focus-writing controls are available. Revision history is restricted to the author and assigned teacher; restoring creates another draft first. History retains up to 20 unique versions/chapter within a 200-version/2-million-character story archive.
+- By default, saving a chapter also runs a bounded local continuity check immediately, without using the monthly manual-check allowance or sending work to Google. Students can turn after-save checking off. Manual optional-AI checks remain available; the result clearly identifies the method used.
+- Involved students save their own perspective notes. **Ask teacher** requires only the requesting student's note, so an absent peer cannot prevent escalation. Adopting/keeping versions through peer agreement still requires both notes. Teachers can also initiate review directly.
+- A teacher decision stays locked until the teacher reopens it. Unchanged teacher evidence remains protected when another chapter is edited or the story is rechecked. Changing the actual evidence invalidates that agreement for the changed case. Decisions never automatically rewrite manuscripts.
+- Teachers can review chapters with written feedback, request revision, moderate passages, filter by student/submission date, and export story/review history as JSON or contribution summaries as CSV. Teacher review and AI feedback are separate; the teacher assigns final grades.
+- Teachers set assignment instructions/deadlines and can close, archive, or reopen assignments. Closed/archived assignments are read-only for student writes. Archiving does not erase records.
+- The wiki separates human-authored character/location/object/event/relationship/rule profiles from extracted source evidence. Profiles can cite real chapters and retain their authorship.
 
-The server loads `.env.local` before `.env`. An existing process environment value takes precedence. Keep secrets out of frontend code.
+Authorized sessions poll for committed updates every five seconds. That indicator does not mean an unsubmitted draft has reached the server. Saves reject stale story versions and changed chapter base text instead of silently replacing newer work.
 
-- `GEMINI_API_KEY`: optional server-side key. Leave blank for limited local checks and unscored teacher-review prompts.
-- `GEMINI_MODEL`: the model available to your Google account; default `gemini-2.5-flash`. Live availability/accuracy must be verified with your own key.
-- `MONTHLY_CHECK_LIMIT`: per-account monthly allowance, default 20. Continuity checks and evaluations share it. Attempts consume allowance even when the provider fails or a stale result is discarded.
-- `DATA_DIR`: persistent storage directory, default `data`. Back up `workspace.json` securely. It contains student text, discussions, salted password hashes, usage, and hashed session tokens.
+## References and saved feedback
+
+Teachers can paste reference text or import PDF, DOCX, or UTF-8 TXT files. Imports accept up to 4 MB, at most 50 PDF pages, and at most 50,000 retained text characters. DOCX expansion is bounded; parsing runs in a separate process with processing limits and without AI credentials. Scanned PDFs need OCR, encrypted files must be unlocked, and legacy DOC files must be converted to DOCX. The app reports unreadable/oversized files and truncated text.
+
+Importing only creates a preview. Teachers review/edit the extracted text, complete criteria/descriptions/weights totaling 100, supply source/license details, and attest permission before saving. Materials remain private to this school and can be withdrawn. The actual complete selected reference is sent to optional AI feedback. Sample rubrics are illustrative, not verified official standards.
+
+Feedback reports are saved by account/story/rubric/revision/language/method preference. They survive navigation, reload, and server restart. Reopening an unchanged report costs no additional allowance. **Regenerate feedback (uses allowance)** explicitly requests another attempt. Changed writing or references mark older feedback outdated. At most 30 recent reports are kept per story. Provider evidence/feedback lengths are bounded before persistence.
+
+Without valid AI evaluation, reports use the selected criteria and actual reading excerpts but leave scores unassigned. These excerpts are prompts for teacher reading, not proof that the criterion was met.
+
+## Privacy, guardian records, and fictional demonstration
+
+**Privacy & guardian notice** is available at sign-in and under Account/Help. Teachers record each actual learner's school decision and an internal consent/notice reference in the roster. Pending/declined records prevent provider requests for that learner's work; automatic local checking and teacher-led review remain available. Recorded/not-required statuses document the school's assertion, not an automatically verified legal determination. The app does not contact guardians or send counselor referrals. Schools must conduct their actual notice/consent and safeguarding process outside this recordkeeping feature.
+
+Shared-device drafts remain readable through browser storage tools. Account offers **Clear my local drafts on sign-out**; downloading a copy and clearing the browser are also available. Private stories are restricted to their author/teacher. Shared story membership is enforced on the server. Moderation cues are restricted to the teacher and affected author.
+
+Teachers can choose **Open fictional demo** to add **Ang Huling Habi**, an original Filipino-inspired example with source-linked profiles and planted continuity differences. It does not overwrite existing assignments. Sample accounts, story content, and illustrative feedback are labeled fictional; they are not research findings or actual student performance.
+
+The two supplied practice classes remain Mabini and Rizal. General multi-school tenancy, additional-class administration, automatic notifications, public sharing, billing, marketplace payments, CSR administration, and counselor handoff automation remain rollout work.
+
+## Configuration and HTTPS proxies
+
+The server loads `.env.local` before `.env`; existing process environment values take precedence. Keep keys server-side.
+
+- `GEMINI_API_KEY`: optional. Blank uses limited local checks and unscored teacher-review feedback.
+- `GEMINI_MODEL`: model available to your account; default `gemini-2.5-flash`. Real provider access and accuracy still need verification with an authorized key.
+- `MONTHLY_CHECK_LIMIT`: default 20 per account/calendar month in Asia/Manila. Manual checks and generated evaluations share the allowance; attempts count even if a provider fails or a stale result is rejected. Cached reports and automatic local after-save checks do not consume it.
+- `DATA_DIR`: persistent directory, default `data`; never put it under `public`.
 - `PORT`: default 3000. `HOST`: default `127.0.0.1`.
-- `COOKIE_SECURE`: set `true` only when serving over HTTPS.
+- `APP_ORIGIN`: exact external origin, such as `https://writing.your-school.example`. No path, query, or credentials.
+- `TRUST_PROXY`: explicitly trusted proxy addresses/networks, such as `loopback` or `10.0.0.5/32`. The proxy must sanitize/overwrite forwarding headers. Do not trust all addresses or expose an unintended bypass path to the app.
+- `COOKIE_SECURE`: `true` when accessed over HTTPS.
 
-The app reports whether a key is configured, the method used by each check, unsaved/unchecked work, errors, and remaining allowance. A configured key is not a claim that provider access succeeds. Invalid provider evidence is rejected before rendering; a limited local result is labeled explicitly. The local parser covers a small evaluated set of English/Filipino patterns. No detected conflicts/flags is not proof that a story is consistent or suitable.
+With a TLS-terminating proxy, set the canonical public origin and the actual trusted proxy boundary. Trusted HTTPS same-origin writes and foreign-origin rejection have local HTTP/header simulation tests; the final deployed HTTPS setup still requires verification.
 
-## Classroom workflow
+## Storage, backup, and recovery
 
-1. Sign in with your own account and select an assigned story.
-2. Students write and save their own chapters. Drafts are retained in that browser by account and story; saved work is stored on the server.
-3. Run a **manual continuity check** after edits. The UI marks changed drafts and policies unchecked. Each result belongs to a specific story revision.
-4. Each involved student saves their own perspective note. Discuss which version to adopt, keep both intentionally, or ask the teacher. Decisions do not rewrite the manuscript.
-5. Teachers arbitrate escalations and review flagged passages. Allowed/rework statuses reach the author. No counselor notifications or external referrals are sent by this app.
-6. Teachers assign complete rubrics and references. Add criteria/descriptions/weights, paste reference text, or import a `.txt` file. Review imported text and attest permission/source/license before saving. PDF/DOCX parsing is not implemented; paste selected text instead. Materials stay school-private and teachers can withdraw them.
-7. Formative AI evaluation must cite exact draft excerpts. Without valid AI feedback, the report uses the selected criteria but leaves every score unassigned for teacher review. Sample rubrics are illustrative, not verified official standards.
+The current backend is an atomic JSON store with a process lock. A second writer to the same DATA_DIR is refused. This protects the local/single-server deployment; it does **not** provide managed shared storage, horizontal scaling, or multi-tenant database isolation. Do not run multiple replicas against this file. Backups contain school records and password hashes and must be protected.
 
-Authorized sessions refresh every five seconds. Saves use optimistic version checks; stale saves return a conflict and retain the local draft. A chapter edit also compares the original draft text to prevent a second session of the same author silently overwriting newer work.
+Create a backup to a new file, and inspect its checksum:
+
+```powershell
+npm run storage:backup -- --data-dir data --file school-backup.json
+npm run storage:inspect -- --file school-backup.json
+```
+
+To restore, first stop the server. Restore checks the backup identity/checksum, retains the previous workspace, and revokes copied sessions so users must sign in again:
+
+```powershell
+npm run storage:restore -- --data-dir data --file school-backup.json
+npm run start:production
+```
+
+A checksum detects accidental alteration; use a backup from a trusted source. Restoring while the server is running is refused. If a stale lock exists after an abnormal stop, the app verifies the recorded process is no longer alive before reclaiming it. Do not manually remove a lock belonging to an active server.
+
+Schools must set their retention/deletion, recovery access, and backup-storage procedures. History/report count limits and assignment archiving are not a comprehensive school retention policy. Managed storage, encrypted transport/storage, deployment monitoring, account recovery operations, and school acceptance remain production gates.
 
 ## Build and verification
 
@@ -49,18 +93,15 @@ Authorized sessions refresh every five seconds. Saves use optimistic version che
 npm run lint
 npm test
 npm run test:browser
+npm audit
 npm run build
 npm run start:production
 ```
 
-`lint` checks TypeScript. `npm test` runs analysis fixtures, authenticated persistence/permission tests, and a controlled local model server for malformed/stale AI responses. Browser tests use installed Google Chrome headlessly and isolated test data under `tmp`; they check both languages, 320/390/768/1440/1920px layouts, dialogs, XSS, save/reload, and draft retention. They do not contact Google. `npm run preview` starts the full production Express app with APIs; it requires a preceding build.
+`lint` is TypeScript checking. Automated tests use synthetic records and controlled local provider responses; they do not contact Google. Test databases are created in generated system temporary directories and removed afterward, so a fresh checkout does not need a pre-existing `tmp` folder. Screenshots and browser result summaries are intentionally retained under `tmp`.
 
-Use `package-lock.json` and `npm ci` for the verified dependency set.
+The browser command uses installed Chrome headlessly. It runs the original teacher layout suite, additional student/BMC language-and-size states, delayed-save/storage-failure/report/import/privacy workflows, and WCAG-tagged axe checks on selected flows. Automated accessibility checks do not certify full WCAG compliance or replace screen-reader/disabled-user testing. Physical mobile devices, other browsers, actual hosting, and live AI reasoning/cost/latency remain unverified.
 
-## Deployment boundaries
+`npm run preview` starts the full production Express app and APIs after a build. Use `package-lock.json` for the verified dependencies. On school-sized workloads, evaluate network/save/load budgets on the intended devices before release; no educational-outcome, availability, or production-scale guarantee is made.
 
-This version uses an atomic JSON file and is suitable for a single server process with a persistent local disk. Do not run multiple replicas against that file. A school rollout still needs managed database/storage, HTTPS with the chosen reverse proxy configuration, backups, account recovery/provisioning, retention and consent processes, and evaluated live AI behavior. It is not a claim of legal compliance or proven educational outcomes.
-
-Institutional billing, marketplace checkout, CSR administration, automated referrals, multi-school tenancy, and public material sharing remain planned. The calculator uses an explicitly assumed annual fee and FX; its default assumptions show a loss. Source PDFs are preserved as supplied, including any historical captions.
-
-See [QA_FIXES.md](QA_FIXES.md) for the 44-finding disposition and validation limits.
+See [QA_FIXES.md](QA_FIXES.md) for the second-pass issue mapping, test evidence, and original QA history. Source PDFs remain unchanged. Business calculator defaults still correctly show a loss under the explicit annual-fee and FX assumptions; historical source graphics are not a validated pricing model.

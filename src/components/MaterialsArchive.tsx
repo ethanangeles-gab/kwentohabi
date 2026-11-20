@@ -9,6 +9,7 @@ type Props = {
   action: (kind: string, payload: any) => Promise<StoryWorkspace>;
   refresh: () => Promise<void>;
   lang: "tl" | "en";
+  userId: string;
 };
 export function MaterialsArchive({
   story,
@@ -17,18 +18,32 @@ export function MaterialsArchive({
   action,
   refresh,
   lang,
+  userId,
 }: Props) {
   const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
   const [show, setShow] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false),
     [evaluation, setEvaluation] = useState<Evaluation | null>(null);
+  const [useAI, setUseAI] = useState(true);
+  const retained = Object.values(story.evaluations || {})
+    .filter((item) => item.generatedBy === userId && item.language === lang)
+    .sort((a, b) => (b.generatedAt || "").localeCompare(a.generatedAt || ""));
+  const report =
+    retained.find(
+      (item) =>
+        item.revision === story.revision &&
+        item.rubricId === story.selectedRubricId,
+    ) ||
+    evaluation ||
+    retained[0] ||
+    null;
   const active = rubrics.find((r) => r.id === story.selectedRubricId);
   const validEval =
-    evaluation &&
-    evaluation.revision === story.revision &&
-    evaluation.rubricId === story.selectedRubricId;
-  const run = async () => {
+    report &&
+    report.revision === story.revision &&
+    report.rubricId === story.selectedRubricId;
+  const run = async (force = false) => {
     setBusy(true);
     setError("");
     try {
@@ -36,6 +51,8 @@ export function MaterialsArchive({
         storyId: story.id,
         version: story.version,
         lang,
+        force,
+        useAI,
       });
       if (
         !result.evaluation ||
@@ -179,13 +196,18 @@ export function MaterialsArchive({
           <button
             className="btn"
             disabled={busy || !active || !story.chapters.length}
-            onClick={run}
+            onClick={() => run(Boolean(report && validEval))}
           >
             {busy
               ? t("Sinusuri…", "Evaluating…")
-              : t("Bumuo ng feedback", "Generate feedback")}
+              : report && validEval
+                ? t(
+                    "Bumuo ng bagong feedback (may quota)",
+                    "Regenerate feedback (uses allowance)",
+                  )
+                : t("Bumuo ng feedback", "Generate feedback")}
           </button>
-          {evaluation && !validEval && (
+          {report && !validEval && (
             <p className="notice">
               {t(
                 "Luma na ang feedback. Suriin muli ang kasalukuyang draft.",
@@ -193,10 +215,32 @@ export function MaterialsArchive({
               )}
             </p>
           )}
-          {validEval && (
+          <label className="flex items-start gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={useAI}
+              onChange={(e) => setUseAI(e.target.checked)}
+            />
+            {t(
+              "Gamitin ang opsyonal na AI kung pinahihintulutan ng paaralan.",
+              "Use optional AI when authorized by the school.",
+            )}
+          </label>
+          {report && (
+            <p className="text-xs text-slate-600">
+              {t("Naka-save na ulat", "Saved report")} ·{" "}
+              {report.generatedAt
+                ? new Date(report.generatedAt).toLocaleString(
+                    lang === "tl" ? "fil-PH" : "en-PH",
+                  )
+                : ""}{" "}
+              · {t("rebisyon", "revision")} {report.revision}
+            </p>
+          )}
+          {report && (
             <div className="space-y-4">
-              <p className="notice">{evaluation.notice}</p>
-              {evaluation.criteria.map((c, i) => (
+              <p className="notice">{report!.notice}</p>
+              {report!.criteria.map((c, i) => (
                 <article
                   key={i}
                   className="border border-slate-200 rounded-lg p-3 space-y-2"
@@ -225,6 +269,7 @@ export function MaterialsArchive({
       {show && (
         <MaterialDialog
           lang={lang}
+          userId={userId}
           onClose={() => setShow(false)}
           onSave={async (body) => {
             await api("/api/rubrics", body);
@@ -241,23 +286,29 @@ function MaterialDialog({
   lang,
   onClose,
   onSave,
+  userId,
 }: {
   lang: "tl" | "en";
   onClose: () => void;
   onSave: (body: any) => Promise<void>;
+  userId: string;
 }) {
   const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
-  const [draft, setDraft] = useDraft("kwentohabi-teacher-material-draft", {
-    title: "",
-    category: "Teacher reference",
-    source: "",
-    license: "",
-    exemplarText: "",
-    attested: false,
-    criteria: defaultCriteria(),
-  });
+  const [draft, setDraft, storage] = useDraft(
+    `kwentohabi-material:${userId}:draft`,
+    {
+      title: "",
+      category: "Teacher reference",
+      source: "",
+      license: "",
+      exemplarText: "",
+      attested: false,
+      criteria: defaultCriteria(),
+    },
+  );
   const [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const [importNotice, setImportNotice] = useState("");
   const total = draft.criteria.reduce((n, c) => n + c.weight, 0);
   const update = (i: number, key: string, value: any) =>
     setDraft({
@@ -329,49 +380,78 @@ function MaterialDialog({
           </label>
         ))}
         <label className="field">
-          {t(
-            "Mag-import ng modelong teksto (.txt, hanggang 200 KB)",
-            "Import reference text (.txt, up to 200 KB)",
-          )}
+          {t("Mag-import ng dokumento", "Import document")}
           <input
+            aria-label={t("Mag-import ng dokumento", "Import document")}
             type="file"
-            accept=".txt,text/plain"
+            accept=".pdf,.docx,.txt,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain"
+            disabled={busy}
             onChange={async (e) => {
               const file = e.target.files?.[0];
               if (!file) return;
-              if (
-                !file.name.toLowerCase().endsWith(".txt") ||
-                file.size > 200000
-              ) {
+              if (file.size > 4_000_000) {
                 setError(
                   t(
-                    "Gumamit ng .txt file na hanggang 200 KB.",
-                    "Choose a .txt file up to 200 KB.",
+                    "Hanggang 4 MB lamang ang dokumento.",
+                    "Documents must be at most 4 MB.",
                   ),
                 );
                 return;
               }
-              const text = await file.text();
-              if (text.length > 50000) {
-                setError(
-                  t(
-                    "Hanggang 50,000 karakter lamang.",
-                    "Maximum 50,000 characters.",
-                  ),
-                );
-                return;
-              }
-              setDraft({ ...draft, exemplarText: text });
+              setBusy(true);
               setError("");
+              try {
+                const bytes = new Uint8Array(await file.arrayBuffer());
+                let binary = "";
+                for (let i = 0; i < bytes.length; i += 8192)
+                  binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
+                const result = await api("/api/materials/extract", {
+                  fileName: file.name,
+                  base64: btoa(binary),
+                });
+                setDraft((previous) => ({
+                  ...previous,
+                  exemplarText: result.text,
+                  source: file.name,
+                }));
+                setImportNotice(
+                  result.truncated
+                    ? t(
+                        "Nilimitahan sa 50,000 karakter ang teksto. Suriin bago i-save.",
+                        "Text was limited to 50,000 characters. Review before saving.",
+                      )
+                    : t(
+                        "Na-extract ang teksto. Suriin at itama bago i-save; hindi pa ito materyal sa archive.",
+                        "Text extracted. Review and correct it before saving; it is not yet an archived material.",
+                      ),
+                );
+              } catch (error: any) {
+                setError(error.message);
+              } finally {
+                setBusy(false);
+              }
             }}
           />
         </label>
-        <p className="text-xs text-slate-500">
+        <p className="text-xs text-slate-600">
           {t(
-            "Para sa PDF/DOCX, i-paste ang piniling teksto sa ibaba. Suriin muna ang imported na nilalaman.",
-            "For PDF/DOCX, paste selected text below. Review imported content before saving.",
+            "PDF, DOCX o UTF-8 TXT; hanggang 4 MB at 50 pahina sa PDF. Kailangan ng OCR ang scanned na dokumento.",
+            "PDF, DOCX or UTF-8 TXT; up to 4 MB and 50 PDF pages. Scanned documents require OCR.",
           )}
         </p>
+        {importNotice && (
+          <p role="status" className="notice">
+            {importNotice}
+          </p>
+        )}
+        {!storage.persisted && (
+          <p role="alert" className="error">
+            {t(
+              "Hindi naitatabi sa browser ang materyal. I-save muna bago umalis.",
+              "Material draft not saved locally. Save before leaving.",
+            )}
+          </p>
+        )}
         <label className="field">
           {t("Modelong teksto (opsyonal)", "Reference text (optional)")}
           <textarea

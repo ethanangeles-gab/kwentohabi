@@ -15,6 +15,12 @@ export interface Chapter {
   title: string;
   at: string;
   text: string;
+  review?: {
+    status: "reviewed" | "rework";
+    feedback: string;
+    teacherId: string;
+    at: string;
+  };
 }
 
 export interface StoryFact {
@@ -26,6 +32,43 @@ export interface StoryFact {
   chapterId: string;
   quote: string;
   status: "canon" | "contested" | "alternative";
+}
+
+export interface AnalysisCoverage {
+  truncated: boolean;
+  limits: {
+    facts: number;
+    conflicts: number;
+    flags: number;
+    quoteLength: number;
+  };
+  notice: string;
+}
+
+export interface WikiEntry {
+  id: string;
+  category:
+    "character" | "location" | "object" | "event" | "relationship" | "rule";
+  name: string;
+  description: string;
+  details: string;
+  chapterIds: string[];
+  createdBy: string;
+  updatedAt: string;
+}
+
+export interface ChapterRevision extends Chapter {
+  chapterId: string;
+  revisionId: string;
+  savedAt: string;
+}
+
+export interface ConsentRecord {
+  status: "pending" | "recorded" | "declined" | "not-required";
+  reference: string;
+  noticeVersion: string;
+  recordedAt: string;
+  recordedBy: string;
 }
 
 export interface Contradiction {
@@ -117,6 +160,8 @@ export interface SessionUser {
   name: string;
   role: "teacher" | "student";
   classIds: string[];
+  isDemo?: boolean;
+  consentStatus?: ConsentRecord["status"];
 }
 
 export interface StoryWorkspace {
@@ -150,6 +195,13 @@ export interface StoryWorkspace {
     wordsAdded: number;
     kind: string;
   }[];
+  evaluations?: Record<string, Evaluation>;
+  coverage?: AnalysisCoverage;
+  instructions?: string;
+  dueAt?: string;
+  status?: "active" | "closed" | "archived";
+  isDemo?: boolean;
+  wikiEntries?: WikiEntry[];
 }
 
 export interface Evaluation {
@@ -164,6 +216,9 @@ export interface Evaluation {
     evidence: { chapterId: string; quote: string }[];
   }[];
   notice: string;
+  generatedAt?: string;
+  generatedBy?: string;
+  language?: "tl" | "en";
 }
 
 export interface ChapterSentiment {
