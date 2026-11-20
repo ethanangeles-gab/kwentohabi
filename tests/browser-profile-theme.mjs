@@ -1,3 +1,4 @@
+import { setLanguage } from "./language.mjs";
 import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import assert from "node:assert/strict";
@@ -216,31 +217,17 @@ try {
       await scan(`${selectedTheme}: ${view}`);
     }
     await page.getByText("Help & project", { exact: true }).click();
-    await page.getByRole("button", { name: "BMC & Q&A", exact: true }).click();
-    for (const tab of [
-      "9-Block Canvas",
-      "Q&A Defense Sheet",
-      "Unit Economics",
-    ]) {
-      await page.getByRole("button", { name: tab, exact: true }).click();
-      await scan(`${selectedTheme}: ${tab}`);
-    }
+    await page
+      .getByRole("button", { name: "Teacher's guidance", exact: true })
+      .click();
+    await scan(`${selectedTheme}: Teacher's guidance`);
   }
   await page.getByRole("button", { name: "Classroom", exact: true }).click();
   let layoutStates = 0;
   for (const width of [320, 390, 768, 1440]) {
     await page.setViewportSize({ width, height: 844 });
     for (const language of ["en", "tl"]) {
-      if (
-        (await page.locator("html").getAttribute("lang")) !==
-        (language === "en" ? "en" : "fil")
-      )
-        await page
-          .getByRole("button", {
-            name: language === "en" ? "English" : "Filipino",
-            exact: true,
-          })
-          .click();
+      await setLanguage(page, language);
       const trigger = page.getByRole("button", {
         name:
           language === "en"
@@ -298,7 +285,7 @@ try {
         .click();
     }
   }
-  await page.getByRole("button", { name: "English", exact: true }).click();
+  await setLanguage(page, "en");
   dialog = await openSettings();
   await dialog
     .getByRole("button", { name: "Remove picture", exact: true })
@@ -325,7 +312,7 @@ try {
     .getByRole("combobox", { name: "Sign in as", exact: true })
     .selectOption("student");
   await page.getByLabel(/username/i).fill(student.username);
-  await page.getByLabel("Password", { exact: true }).fill(student.password);
+  await page.getByLabel(/^Password\s*\*?$/).fill(student.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   dialog = await openSettings();
   await dialog

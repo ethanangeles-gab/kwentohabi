@@ -184,6 +184,7 @@ export function StudentCanvas({
         </div>
         {story.chapters.length === 0 && (
           <MayakdaNote
+            lang={lang}
             pose="nest"
             size={96}
             className="card"
@@ -455,7 +456,12 @@ export function StudentCanvas({
               >
                 {saving ? (
                   <>
-                    <Mayakda pose="weave" size={26} className="-my-1" />
+                    <Mayakda
+                      pose="weave"
+                      size={26}
+                      className="-my-1"
+                      interactive={false}
+                    />
                     {t("Hinahabi ang kabanata…", "Weaving your chapter…")}
                   </>
                 ) : (
@@ -521,7 +527,12 @@ export function StudentCanvas({
           >
             {checking ? (
               <>
-                <Mayakda pose="weave" size={26} className="-my-1" />
+                <Mayakda
+                  pose="weave"
+                  size={26}
+                  className="-my-1"
+                  interactive={false}
+                />
                 {t("Sinusuri…", "Checking…")}
               </>
             ) : (
@@ -581,6 +592,7 @@ export function StudentCanvas({
           ) : (
             <>
               <MayakdaNote
+                lang={lang}
                 pose="notice"
                 size={64}
                 title={t("May napansin ako dito…", "I noticed something here…")}

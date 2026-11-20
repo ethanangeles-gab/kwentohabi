@@ -250,7 +250,89 @@ mark.hl-distress {
   }
 }
 .app-shell {
+  position: relative;
+  isolation: isolate;
   background: var(--page);
+}
+/* Let the doodles show faintly through the header's open space. */
+.app-shell > header {
+  background-color: color-mix(in srgb, var(--surface) 72%, transparent);
+}
+/* Story doodles: a faint storytelling backdrop painted behind every card. */
+.story-doodles {
+  --sd-ink: #7a4f2c;
+  --sd-orange: var(--brand-orange);
+  --sd-gold: #e0a21b;
+  --sd-red: var(--brand-red);
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+  opacity: 0.3;
+}
+:root[data-theme="dark"] .story-doodles {
+  --sd-ink: #e9cfa5;
+  --sd-orange: #f0a050;
+  --sd-gold: #ffc64b;
+  --sd-red: #ff8f80;
+  opacity: 0.17;
+}
+.story-doodles .sd-item {
+  position: absolute;
+  height: auto;
+  overflow: visible;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform: rotate(var(--sd-r, 0deg)) scaleX(var(--sd-s, 1));
+}
+.story-doodles .sd-fill {
+  fill: currentColor;
+  fill-opacity: 0.32;
+  stroke: none;
+}
+.story-doodles .sd-solid {
+  fill: currentColor;
+  stroke: none;
+}
+.story-doodles .sd-ink {
+  color: var(--sd-ink);
+}
+.story-doodles .sd-orange {
+  color: var(--sd-orange);
+}
+.story-doodles .sd-gold {
+  color: var(--sd-gold);
+}
+.story-doodles .sd-red {
+  color: var(--sd-red);
+}
+.story-doodles .sd-float {
+  animation: sd-bob 7s ease-in-out infinite alternate;
+}
+@keyframes sd-bob {
+  to {
+    transform: rotate(var(--sd-r, 0deg)) scaleX(var(--sd-s, 1)) translateY(-8px);
+  }
+}
+@media (max-width: 639px) {
+  .story-doodles .sd-wide {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-doodles .sd-item {
+    animation: none !important;
+  }
+}
+@media print {
+  .story-doodles {
+    display: none;
+  }
 }
 /* Sign-in: a woven backdrop, a two-panel card, and Mayakda on the story side. */
 .auth-shell {
@@ -427,13 +509,122 @@ mark.hl-distress {
   object-fit: contain;
   background: transparent;
 }
+/* Enlarge the full mark so its tagline is legible, while trimming only
+   the PNG's transparent padding around the header artwork. */
 .official-logo-compact {
-  width: 136px;
+  width: 240px;
+  max-width: none;
+  margin: -15px -20px -36px;
 }
 @media (max-width: 639px) {
   .official-logo-compact {
-    width: 112px;
+    width: 192px;
+    margin: -12px -16px -29px;
   }
+}
+.workspace-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "brand profile"
+    "context context"
+    "stories stories"
+    "nav nav";
+  align-items: center;
+  gap: 0.75rem;
+  padding-block: 1rem;
+}
+.header-brand {
+  grid-area: brand;
+  justify-self: start;
+}
+.header-context {
+  grid-area: context;
+  min-width: 0;
+}
+.header-profile {
+  grid-area: profile;
+  align-self: start;
+  justify-self: end;
+}
+.header-stories {
+  grid-area: stories;
+  min-width: 0;
+  max-width: 60rem;
+  align-items: center;
+}
+.header-story-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 2rem;
+}
+.workspace-header .workspace-nav {
+  grid-area: nav;
+  min-width: 0;
+}
+.header-companion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.25rem;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.35;
+}
+.header-companion .mayakda {
+  width: 56px !important;
+}
+.header-companion .companion-description {
+  display: none;
+}
+@media (min-width: 640px) {
+  .workspace-header {
+    grid-template-columns: 200px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand context profile"
+      "brand stories stories"
+      "nav nav nav";
+    column-gap: 1.5rem;
+  }
+  .header-companion .mayakda {
+    width: 64px !important;
+  }
+  .header-story-actions {
+    padding-top: 1.5rem;
+  }
+}
+@media (min-width: 1200px) {
+  .workspace-header {
+    grid-template-columns: 200px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "brand context profile"
+      "brand stories stories"
+      "brand nav nav";
+    gap: 0.875rem 1.75rem;
+    padding-block: 1.25rem;
+  }
+  .header-brand {
+    align-self: center;
+  }
+  .header-context {
+    padding-left: 1rem;
+    border-left: 1px solid var(--line);
+  }
+  .header-story-actions {
+    gap: 2.5rem;
+  }
+}
+.story-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+}
+.readonly-value {
+  border-radius: 0.5rem;
+  border: 1px dashed var(--color-slate-300);
+  padding: 0.625rem;
+  font-weight: 400;
+  color: var(--ink);
 }
 .habi-thread-bar {
   height: 4px;
@@ -496,13 +687,13 @@ mark.hl-distress {
     padding-bottom: 0.25rem;
   }
   .workspace-nav > button,
-  .workspace-nav > details {
+  .workspace-nav > .help-menu {
     flex-shrink: 0;
     white-space: nowrap;
   }
   .secondary-menu {
     position: fixed;
-    top: 4.5rem;
+    top: var(--help-menu-top, 4.5rem);
     left: 1rem;
     right: 1rem;
     width: auto;
@@ -518,6 +709,165 @@ mark.hl-distress {
   flex-shrink: 0;
   vertical-align: middle;
   line-height: 0;
+}
+.mayakda-trigger {
+  display: block;
+  position: relative;
+  width: 100%;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: inherit;
+  line-height: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+.mayakda-speech {
+  position: fixed;
+  z-index: 80;
+  width: var(--speech-width, 288px);
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  padding: 0.75rem 1rem 1rem;
+  border: 1px solid var(--accent-line);
+  border-radius: 1rem;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.875rem;
+  line-height: 1.55;
+  text-align: left;
+  box-shadow: 0 8px 28px rgb(54 32 18 / 0.2);
+  animation: mk-speech-in 160ms ease-out;
+}
+.mayakda-speech::after {
+  content: "";
+  position: absolute;
+  left: var(--speech-arrow);
+  width: 12px;
+  height: 12px;
+  background: var(--surface);
+  transform: translateX(-50%) rotate(45deg);
+}
+.mayakda-speech[data-placement="above"]::after {
+  bottom: -7px;
+  border-right: 1px solid var(--accent-line);
+  border-bottom: 1px solid var(--accent-line);
+}
+.mayakda-speech[data-placement="below"]::after {
+  top: -7px;
+  border-left: 1px solid var(--accent-line);
+  border-top: 1px solid var(--accent-line);
+}
+.mayakda-speech[data-placement="left"]::after {
+  left: auto;
+  right: -7px;
+  top: var(--speech-arrow);
+  transform: translateY(-50%) rotate(45deg);
+  border-top: 1px solid var(--accent-line);
+  border-right: 1px solid var(--accent-line);
+}
+.mayakda-speech[data-placement="right"]::after {
+  left: -7px;
+  top: var(--speech-arrow);
+  transform: translateY(-50%) rotate(45deg);
+  border-bottom: 1px solid var(--accent-line);
+  border-left: 1px solid var(--accent-line);
+}
+.mayakda-speech-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+  font-family: var(--font-serif);
+  font-weight: 700;
+}
+.mayakda-speech-heading button {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--secondary);
+  color: var(--label);
+}
+@keyframes mk-speech-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.mk-facing,
+.mk-reaction {
+  display: block;
+  position: relative;
+  transform-origin: 50% 90%;
+}
+.mayakda[data-facing="left"] .mk-facing {
+  transform: scaleX(-1);
+}
+.mayakda-trigger:hover .mk-img {
+  filter: drop-shadow(0 3px 8px rgb(218 118 17 / 0.35));
+}
+.mayakda-is-reacting {
+  opacity: 1;
+}
+.mayakda-is-reacting .mk-reaction {
+  animation: mk-greet 700ms ease-in-out both;
+}
+.mayakda-is-reacting .mk-img {
+  animation-play-state: paused;
+}
+.mk-writing-tools {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.mk-writing-tools > svg {
+  position: absolute;
+  width: clamp(14px, 28%, 24px);
+  height: auto;
+  stroke-width: 1.8;
+  filter: drop-shadow(0 2px 2px rgb(92 48 14 / 0.18));
+}
+.mk-writing-tools .mk-pencil {
+  top: 4%;
+  left: -12%;
+  transform: rotate(-18deg);
+  color: var(--accent-ink);
+  fill: var(--primary);
+}
+.mk-writing-tools .mk-paper {
+  top: 44%;
+  left: 88%;
+  transform: rotate(14deg);
+  color: var(--label);
+  fill: var(--surface);
+}
+@keyframes mk-greet {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  20% {
+    transform: translateY(0) scale(1.06, 0.94);
+  }
+  42% {
+    transform: translateY(-14%) rotate(-9deg);
+  }
+  65% {
+    transform: translateY(-7%) rotate(7deg);
+  }
+  82% {
+    transform: translateY(0) rotate(-3deg);
+  }
 }
 .mayakda .mk-img {
   display: block;
@@ -644,6 +994,12 @@ mark.hl-distress {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .mayakda-speech {
+    animation: none !important;
+  }
+  .mayakda-is-reacting .mk-reaction {
+    filter: brightness(1.12) saturate(1.12);
+  }
   .mayakda,
   .mayakda * {
     animation: none !important;

@@ -69,7 +69,7 @@ export function TeacherDashboard({
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 justify-between items-center">
         <div className="flex items-center gap-3">
-          <Mayakda pose="quiet" size={40} />
+          <Mayakda pose="quiet" size={40} lang={lang} />
           <div>
             <p className="eyebrow">
               {t("Guro ang gumagabay", "Teacher-led review")}

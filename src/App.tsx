@@ -1,9 +1,10 @@
-import React, { Suspense, lazy, useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { SessionUser, StoryWorkspace, RubricStandard } from "./types";
 import { api, ApiError, useDraft, clearAccountDrafts } from "./utils/client";
 import { Dialog } from "./components/Dialog";
 import { BrandLogo } from "./components/BrandLogo";
 import { Mayakda } from "./components/Mayakda";
+import { StoryDoodles } from "./components/StoryDoodles";
 import { RegistrationForm, RequiredMark } from "./components/RegistrationForm";
 import { ClassroomHome } from "./components/ClassroomHome";
 import { PrivacyNotice } from "./components/PrivacyNotice";
@@ -18,15 +19,13 @@ import {
 import { ProfileMenu } from "./components/ProfileMenu";
 import { useTheme } from "./utils/theme";
 import { ACCOUNT_IDENTIFIER_MAX_LENGTH } from "./utils/accountIdentifier";
+import { classLabel } from "./utils/classes";
 import { StudentCanvas } from "./components/StudentCanvas";
 import { StoryWiki } from "./components/StoryWiki";
 import { TeacherDashboard } from "./components/TeacherDashboard";
 import { MaterialsArchive } from "./components/MaterialsArchive";
-const BmcAndDefense = lazy(() =>
-  import("./components/BmcAndDefense").then((m) => ({
-    default: m.BmcAndDefense,
-  })),
-);
+import { TeacherGuidance } from "./components/TeacherGuidance";
+import { StudentGuidance } from "./components/StudentGuidance";
 type Workspace = {
   school: string;
   user: SessionUser;
@@ -35,7 +34,7 @@ type Workspace = {
   rubrics: RubricStandard[];
   usage: { remaining: number; limit: number; month: string };
 };
-type Tab = "hub" | "canvas" | "wiki" | "teacher" | "archive" | "bmc";
+type Tab = "hub" | "canvas" | "wiki" | "teacher" | "archive" | "guidance";
 
 export default function App() {
   const { theme, chooseTheme, persisted: themePersisted } = useTheme();
@@ -59,7 +58,41 @@ export default function App() {
     >([]);
   const [hasKey, setHasKey] = useState(false);
   const [showHelp, setShowHelp] = useState(false),
+    [helpOpen, setHelpOpen] = useState(false),
     [clearDrafts, setClearDrafts] = useState(false);
+  const helpRoot = useRef<HTMLDivElement>(null),
+    helpTrigger = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!helpOpen) return;
+    const position = () => {
+      const trigger = helpTrigger.current;
+      if (trigger)
+        helpRoot.current?.style.setProperty(
+          "--help-menu-top",
+          `${trigger.getBoundingClientRect().bottom + 8}px`,
+        );
+    };
+    position();
+    const outside = (event: PointerEvent) => {
+      if (!helpRoot.current?.contains(event.target as Node)) setHelpOpen(false);
+    };
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setHelpOpen(false);
+        helpTrigger.current?.focus();
+      }
+    };
+    document.addEventListener("pointerdown", outside);
+    document.addEventListener("keydown", escape);
+    window.addEventListener("resize", position);
+    window.addEventListener("scroll", position, true);
+    return () => {
+      document.removeEventListener("pointerdown", outside);
+      document.removeEventListener("keydown", escape);
+      window.removeEventListener("resize", position);
+      window.removeEventListener("scroll", position, true);
+    };
+  }, [helpOpen]);
   const userRef = useRef(workspace?.user.id);
   userRef.current = workspace?.user.id;
   const actionLock = useRef(false),
@@ -245,6 +278,7 @@ export default function App() {
       readSequence.current++;
       setWorkspace(null);
       setLoginRole("");
+      setHelpOpen(false);
       setTab("hub");
       setSelectedId("");
     } catch (e: any) {
@@ -257,7 +291,7 @@ export default function App() {
         className="max-w-lg mx-auto p-8 flex flex-col items-center gap-3 text-center"
         role="status"
       >
-        <Mayakda pose="weave" size={110} />
+        <Mayakda pose="weave" size={110} interactive={false} />
         {t("Binubuksan ang KwentoHabi…", "Opening KwentoHabi…")}
       </main>
     );
@@ -298,7 +332,7 @@ export default function App() {
               <p className="auth-mascot-bubble">
                 {t("Kumusta! Ako si Mayakda.", "Hi! I'm Mayakda.")}
               </p>
-              <Mayakda pose="nest" size={150} />
+              <Mayakda pose="nest" size={150} lang={lang} />
             </div>
           </section>
           <section className="auth-form space-y-5">
@@ -547,63 +581,71 @@ export default function App() {
   ];
   return (
     <div className="min-h-screen app-shell pb-12">
+      <StoryDoodles />
       <header className="bg-white border-b border-slate-200">
         <div className="habi-thread-bar" />
-        <div className="workspace-width py-4 space-y-4">
-          <div className="flex justify-between items-start gap-3">
-            <div className="min-w-0 flex-1">
-              <h1 className="header-brand">
-                <BrandLogo compact />
-              </h1>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                className="btn-light"
-                onClick={() => setLang(lang === "tl" ? "en" : "tl")}
-              >
-                {lang === "tl" ? "English" : "Filipino"}
-              </button>
-              <ProfileMenu
-                user={workspace.user}
-                school={workspace.school}
-                lang={lang}
-                theme={theme}
-                onThemeChange={chooseTheme}
-                themePersisted={themePersisted}
-                clearDrafts={clearDrafts}
-                onClearDrafts={setClearDrafts}
-                onSignOut={signOut}
-                onSaved={(user) => {
-                  readSequence.current++;
-                  setWorkspace((value) =>
-                    value?.user.id === user.id
-                      ? {
-                          ...value,
-                          user,
-                          users: value.users.map((entry) =>
-                            entry.id === user.id
-                              ? { ...entry, name: user.name }
-                              : entry,
-                          ),
-                        }
-                      : value,
-                  );
-                }}
-              />
-            </div>
+        <div className="workspace-width workspace-header">
+          <h1 className="header-brand shrink-0">
+            <BrandLogo compact />
+          </h1>
+          <div className="min-w-0 header-context">
+            <p className="eyebrow">{t("Paaralan", "School")}</p>
+            <p className="font-serif text-lg sm:text-xl font-bold leading-tight">
+              {workspace.school || t("Walang pangalan", "Unnamed school")}
+            </p>
+            <p className="text-xs text-slate-600">
+              {workspace.user.name} ·{" "}
+              {teacher ? t("Guro", "Teacher") : t("Mag-aaral", "Student")}
+            </p>
           </div>
-          <p className="text-xs text-slate-500">
-            {workspace.school} · {workspace.user.name} ·{" "}
-            {teacher ? t("Guro", "Teacher") : t("Mag-aaral", "Student")}
-          </p>
-          <div className="flex flex-wrap gap-3 items-end">
-            <label className="field flex-1 min-w-0 sm:max-w-2xl">
+          <div className="header-profile">
+            <ProfileMenu
+              user={workspace.user}
+              school={workspace.school}
+              lang={lang}
+              onLangChange={setLang}
+              theme={theme}
+              onThemeChange={chooseTheme}
+              themePersisted={themePersisted}
+              clearDrafts={clearDrafts}
+              onClearDrafts={setClearDrafts}
+              onSignOut={signOut}
+              onSaved={(user) => {
+                readSequence.current++;
+                setWorkspace((value) =>
+                  value?.user.id === user.id
+                    ? {
+                        ...value,
+                        user,
+                        users: value.users.map((entry) =>
+                          entry.id === user.id
+                            ? { ...entry, name: user.name }
+                            : entry,
+                        ),
+                      }
+                    : value,
+                );
+              }}
+              onSchoolSaved={(school) => {
+                readSequence.current++;
+                setWorkspace((value) => (value ? { ...value, school } : value));
+              }}
+            />
+          </div>
+          <div className="header-stories flex flex-wrap gap-3 items-end">
+            <label className="field w-full sm:flex-1 min-w-0 sm:max-w-2xl">
               {t("Aktibong kuwento", "Active story")}
               <select
                 aria-label={t("Aktibong kuwento", "Active story")}
                 value={current?.id || ""}
+                disabled={!workspace.stories.length}
                 onChange={(e) => chooseStory(e.target.value)}
               >
+                {!workspace.stories.length && (
+                  <option value="">
+                    {t("Wala ka pang kuwento", "No stories yet")}
+                  </option>
+                )}
                 {workspace.stories.map((s) => (
                   <option key={s.id} value={s.id}>
                     {s.title} · {s.gradeLevel} ·{" "}
@@ -614,9 +656,25 @@ export default function App() {
                 ))}
               </select>
             </label>
-            <button className="btn" onClick={() => setShowNew(true)}>
-              {t("Bagong kuwento", "New story")}
-            </button>
+            <div className="header-story-actions">
+              <button className="btn" onClick={() => setShowNew(true)}>
+                {t("Bagong kuwento", "New story")}
+              </button>
+              <figure className="header-companion">
+                <Mayakda
+                  pose="quiet"
+                  size={80}
+                  lang={lang}
+                  speechPlacement="right"
+                />
+                <figcaption>
+                  <span className="font-serif font-bold">Mayakda</span>
+                  <span className="companion-description">
+                    {t("Kasama sa kuwento", "Writing companion")}
+                  </span>
+                </figcaption>
+              </figure>
+            </div>
           </div>
           <nav
             aria-label={t("Pangunahing nabigasyon", "Main navigation")}
@@ -625,9 +683,10 @@ export default function App() {
             {tabs.map(([id, label]) => (
               <button
                 key={id}
-                className={tab === id ? "btn" : "btn-light"}
+                className={tab === id && !helpOpen ? "btn" : "btn-light"}
                 aria-current={tab === id ? "page" : undefined}
                 onClick={() => {
+                  setHelpOpen(false);
                   setTab(id);
                   setError("");
                 }}
@@ -646,24 +705,57 @@ export default function App() {
                 {label}
               </button>
             ))}
-            <details className="relative">
-              <summary className="btn-light cursor-pointer">
+            <div
+              className="relative help-menu"
+              ref={helpRoot}
+              onBlur={(event) => {
+                if (
+                  !event.currentTarget.contains(
+                    event.relatedTarget as Node | null,
+                  )
+                )
+                  setHelpOpen(false);
+              }}
+            >
+              <button
+                ref={helpTrigger}
+                type="button"
+                className={helpOpen || tab === "guidance" ? "btn" : "btn-light"}
+                aria-expanded={helpOpen}
+                aria-controls="help-menu"
+                aria-current={tab === "guidance" ? "page" : undefined}
+                onClick={() => setHelpOpen(!helpOpen)}
+              >
                 <Menu size={16} />
                 {t("Tulong at proyekto", "Help & project")}
-              </summary>
-              <div className="secondary-menu">
-                <button
-                  className="btn-light"
-                  onClick={(e) => {
-                    setShowHelp(true);
-                    e.currentTarget.closest("details")?.removeAttribute("open");
-                  }}
-                >
-                  {t("Gabay sa paggamit", "How to use KwentoHabi")}
-                </button>
-                <PrivacyNotice lang={lang} />
-              </div>
-            </details>
+              </button>
+              {helpOpen && (
+                <div id="help-menu" className="secondary-menu">
+                  <button
+                    className="btn-light"
+                    onClick={() => {
+                      helpTrigger.current?.focus();
+                      setHelpOpen(false);
+                      setShowHelp(true);
+                    }}
+                  >
+                    {t("Gabay sa paggamit", "How to use KwentoHabi")}
+                  </button>
+                  <button
+                    className={tab === "guidance" ? "btn" : "btn-light"}
+                    onClick={() => {
+                      setHelpOpen(false);
+                      setTab("guidance");
+                      setError("");
+                    }}
+                  >
+                    {teacher
+                      ? t("Patnubay para sa guro", "Teacher's guidance")
+                      : t("Patnubay para sa mag-aaral", "Student's guidance")}
+                  </button>
+                </div>
+              )}
+            </div>
           </nav>
         </div>
       </header>
@@ -673,7 +765,14 @@ export default function App() {
           role="status"
         >
           <span className="inline-flex items-center gap-1.5">
-            {saving && <Mayakda pose="weave" size={20} className="-my-1" />}
+            {saving && (
+              <Mayakda
+                pose="weave"
+                size={20}
+                className="-my-1"
+                interactive={false}
+              />
+            )}
             {saving
               ? t("Sine-save…", "Saving…")
               : connected
@@ -724,7 +823,7 @@ export default function App() {
             {notice}
           </p>
         )}
-        {current && tab !== "hub" && tab !== "bmc" && (
+        {current && tab !== "hub" && tab !== "guidance" && (
           <>
             <div>
               <h2
@@ -783,6 +882,33 @@ export default function App() {
               </p>
             )}
           </>
+        )}
+        {!current && tab !== "hub" && tab !== "guidance" && (
+          <section className="card empty-story flex flex-col items-center text-center gap-4 py-10">
+            <Mayakda pose="nest" size={120} lang={lang} />
+            <h2
+              id="workspace-title"
+              tabIndex={-1}
+              className="font-serif text-2xl font-bold outline-none"
+            >
+              {t("Wala ka pang kuwento", "You don't have a story yet")}
+            </h2>
+            <p className="text-slate-600 max-w-lg">
+              {teacher
+                ? t(
+                    "Gumawa ng bagong kuwento para sa iyong klase. Dito lalabas ang pagsusulat, wiki, gabay ng guro at mga materyales nito.",
+                    "Create a new story for your class. Its writing, wiki, teacher review and materials will appear here.",
+                  )
+                : t(
+                    "Gumawa ng sariling kuwento o hintayin ang gawaing itatalaga ng iyong guro. Dito lalabas ang pagsusulat, wiki at mga materyales nito.",
+                    "Start your own story or wait for an assignment from your teacher. Its writing, wiki and materials will appear here.",
+                  )}
+            </p>
+            <button className="btn" onClick={() => setShowNew(true)}>
+              <PencilLine size={16} />
+              {t("Bagong kuwento", "New story")}
+            </button>
+          </section>
         )}
         {tab === "hub" && (
           <ClassroomHome
@@ -852,13 +978,12 @@ export default function App() {
             lang={lang}
           />
         )}
-        {tab === "bmc" && (
-          <Suspense
-            fallback={<p role="status">{t("Binubuksan…", "Loading…")}</p>}
-          >
-            <BmcAndDefense lang={lang} />
-          </Suspense>
-        )}
+        {tab === "guidance" &&
+          (teacher ? (
+            <TeacherGuidance lang={lang} />
+          ) : (
+            <StudentGuidance lang={lang} />
+          ))}
       </main>
       {showHelp && (
         <Dialog
@@ -928,12 +1053,36 @@ export default function App() {
           users={workspace.users}
           lang={lang}
           onClose={() => setShowNew(false)}
-          onCreate={async (body) => {
-            const story = await api<StoryWorkspace>("/api/stories", body);
-            await refresh();
-            chooseStory(story.id);
+          onCreate={async (bodies) => {
+            let first: StoryWorkspace | undefined,
+              created = 0;
+            try {
+              for (const body of bodies) {
+                const story = await api<StoryWorkspace>("/api/stories", body);
+                first ||= story;
+                created++;
+              }
+            } catch (e: any) {
+              if (!created) throw e;
+              throw Error(
+                t(
+                  `${created} sa ${bodies.length} na kuwento ang nalikha bago nagkaproblema. Tingnan ang Silid-aralan bago subukang muli. `,
+                  `${created} of ${bodies.length} stories were created before an error. Check the Classroom before retrying. `,
+                ) + e.message,
+              );
+            } finally {
+              if (first) await refresh().catch(() => {});
+            }
+            if (first) chooseStory(first.id);
             setShowNew(false);
-            setTab("canvas");
+            setTab(bodies.length > 1 ? "hub" : "canvas");
+            if (bodies.length > 1)
+              setNotice(
+                t(
+                  `Nalikha ang ${bodies.length} pribadong kuwento, isa para sa bawat napiling mag-aaral.`,
+                  `Created ${bodies.length} private stories, one for each selected student.`,
+                ),
+              );
           }}
         />
       )}
@@ -951,33 +1100,67 @@ function NewStoryDialog({
   users: SessionUser[];
   lang: "tl" | "en";
   onClose: () => void;
-  onCreate: (body: any) => Promise<void>;
+  onCreate: (bodies: any[]) => Promise<void>;
 }) {
   const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
+  const teacher = user.role === "teacher";
   const [classId, setClassId] = useState(user.classIds[0]),
-    [mode, setMode] = useState(
-      user.role === "teacher" ? "shared" : "individual",
-    ),
+    [mode, setMode] = useState(teacher ? "shared" : "individual"),
+    [members, setMembers] = useState<string[]>([]),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
+  const students = users.filter(
+    (u) => u.role === "student" && u.classIds.includes(classId),
+  );
+  const modes: [string, string][] = [
+    ...(teacher
+      ? [["shared", t("Pangkat", "Shared group")] as [string, string]]
+      : []),
+    ["individual", t("Pribadong indibidwal", "Private individual")],
+  ];
+  const wholeClass =
+    students.length > 0 && students.every((u) => members.includes(u.id));
+  const toggle = (id: string, on: boolean) =>
+    setMembers((list) =>
+      on ? [...new Set([...list, id])] : list.filter((m) => m !== id),
+    );
   return (
     <Dialog title={t("Bagong kuwento", "New story")} onClose={onClose}>
       <form
         className="space-y-4"
         onSubmit={async (e) => {
           e.preventDefault();
+          if (busy) return;
           const d = new FormData(e.currentTarget);
+          const chosen = members.filter((id) =>
+            students.some((u) => u.id === id),
+          );
+          if (teacher && !chosen.length) {
+            setError(
+              t(
+                "Pumili ng kahit isang mag-aaral, o piliin ang buong klase.",
+                "Select at least one student, or choose the whole class.",
+              ),
+            );
+            return;
+          }
+          const base = {
+            title: d.get("title"),
+            genre: d.get("genre"),
+            classId,
+            mode,
+            instructions: d.get("instructions") || "",
+            dueAt: d.get("dueAt") || "",
+          };
+          const bodies = !teacher
+            ? [{ ...base, memberIds: [] }]
+            : mode === "individual"
+              ? chosen.map((id) => ({ ...base, memberIds: [id] }))
+              : [{ ...base, memberIds: chosen }];
           setBusy(true);
+          setError("");
           try {
-            await onCreate({
-              title: d.get("title"),
-              genre: d.get("genre"),
-              classId,
-              mode,
-              memberIds: d.getAll("members"),
-              instructions: d.get("instructions") || "",
-              dueAt: d.get("dueAt") || "",
-            });
+            await onCreate(bodies);
           } catch (e: any) {
             setError(e.message);
           } finally {
@@ -993,26 +1176,53 @@ function NewStoryDialog({
           {t("Tema", "Genre")}
           <input name="genre" maxLength={200} />
         </label>
-        <label className="field">
-          {t("Klase", "Class")}
-          <select value={classId} onChange={(e) => setClassId(e.target.value)}>
-            {user.classIds.map((id) => (
-              <option key={id}>{id}</option>
-            ))}
-          </select>
-        </label>
-        <label className="field">
-          {t("Uri ng gawain", "Writing mode")}
-          <select value={mode} onChange={(e) => setMode(e.target.value)}>
-            {user.role === "teacher" && (
-              <option value="shared">{t("Pangkat", "Shared group")}</option>
-            )}
-            <option value="individual">
-              {t("Pribadong indibidwal", "Private individual")}
-            </option>
-          </select>
-        </label>
-        {user.role === "teacher" && (
+        {user.classIds.length > 1 ? (
+          <label className="field">
+            {t("Klase", "Class")}
+            <select
+              value={classId}
+              onChange={(e) => {
+                setClassId(e.target.value);
+                setMembers([]);
+              }}
+            >
+              {user.classIds.map((id) => (
+                <option key={id} value={id}>
+                  {classLabel(id, lang)}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <div className="field">
+            <span>{t("Klase", "Class")}</span>
+            <p className="readonly-value">{classLabel(classId, lang)}</p>
+          </div>
+        )}
+        {modes.length > 1 ? (
+          <label className="field">
+            {t("Uri ng gawain", "Writing mode")}
+            <select value={mode} onChange={(e) => setMode(e.target.value)}>
+              {modes.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <div className="field">
+            <span>{t("Uri ng gawain", "Writing mode")}</span>
+            <p className="readonly-value">{modes[0][1]}</p>
+            <span className="text-xs font-normal text-slate-500">
+              {t(
+                "Pribadong kuwento ang nagagawa ng mag-aaral. Ang guro ang gumagawa ng pangkatang gawain.",
+                "Students create private stories. Group assignments are created by the teacher.",
+              )}
+            </span>
+          </div>
+        )}
+        {teacher && (
           <>
             <label className="field">
               {t("Panuto ng gawain", "Assignment instructions")}
@@ -1027,28 +1237,71 @@ function NewStoryDialog({
               {t("Takdang araw (Manila)", "Due date (Manila)")}
               <input type="date" name="dueAt" />
             </label>
+            <fieldset className="space-y-2">
+              <legend className="font-semibold mb-2">
+                {t("Mga kasapi", "Student members")}
+              </legend>
+              {students.length ? (
+                <>
+                  <label className="flex gap-2 items-center font-semibold">
+                    <input
+                      type="checkbox"
+                      checked={wholeClass}
+                      ref={(input) => {
+                        if (input)
+                          input.indeterminate =
+                            members.length > 0 && !wholeClass;
+                      }}
+                      onChange={(e) =>
+                        setMembers(
+                          e.target.checked ? students.map((u) => u.id) : [],
+                        )
+                      }
+                    />
+                    {t("Buong klase", "Whole class")} ({students.length})
+                  </label>
+                  <div className="max-h-64 overflow-y-auto space-y-2 pl-6 pr-2">
+                    {students.map((u) => (
+                      <label key={u.id} className="flex gap-2 items-center">
+                        <input
+                          type="checkbox"
+                          name="members"
+                          value={u.id}
+                          checked={members.includes(u.id)}
+                          onChange={(e) => toggle(u.id, e.target.checked)}
+                        />
+                        {u.name}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-600" role="status">
+                    {t(
+                      `${members.length} sa ${students.length} mag-aaral ang napili.`,
+                      `${members.length} of ${students.length} students selected.`,
+                    )}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {mode === "individual"
+                      ? t(
+                          "Isang hiwalay na pribadong kuwento ang malilikha para sa bawat napiling mag-aaral.",
+                          "A separate private story is created for each selected student.",
+                        )
+                      : t(
+                          "Iisang kuwento ang pagtutulungan ng lahat ng napiling mag-aaral.",
+                          "All selected students write one shared story together.",
+                        )}
+                  </p>
+                </>
+              ) : (
+                <p className="text-sm text-slate-500">
+                  {t(
+                    "Wala pang mag-aaral sa klaseng ito.",
+                    "This class has no students yet.",
+                  )}
+                </p>
+              )}
+            </fieldset>
           </>
-        )}
-        {user.role === "teacher" && (
-          <fieldset className="space-y-2" key={classId + mode}>
-            <legend className="font-semibold mb-2">
-              {t("Mga kasapi", "Student members")}
-            </legend>
-            {users
-              .filter(
-                (u) => u.role === "student" && u.classIds.includes(classId),
-              )
-              .map((u) => (
-                <label key={u.id} className="flex gap-2 items-center">
-                  <input
-                    type={mode === "individual" ? "radio" : "checkbox"}
-                    name="members"
-                    value={u.id}
-                  />
-                  {u.name}
-                </label>
-              ))}
-          </fieldset>
         )}
         {error && (
           <p role="alert" className="error">

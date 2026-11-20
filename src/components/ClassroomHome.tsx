@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import type { SessionUser, StoryWorkspace } from "../types";
 import { useDraft } from "../utils/client";
+import { classLabel } from "../utils/classes";
 type Props = {
   user: SessionUser;
   school: string;
@@ -128,21 +129,15 @@ export function ClassroomHome({
                 )}
                 <span>
                   {teacher
-                    ? t("Repasuhin ang mga kabanata", "Review submissions")
+                    ? t("Pumunta sa Gabay ng guro", "Go to Teacher review")
                     : t("Ituloy ang pagsusulat", "Continue writing")}
                 </span>
                 <ArrowRight size={16} />
               </button>
-            ) : (
-              <button className="btn" onClick={onNew}>
-                <PencilLine size={18} />
-                {t("Simulan ang kuwento", "Start a story")}
-              </button>
-            )}
-            <button className="btn-light" onClick={onNew}>
-              {teacher
-                ? t("Lumikha ng gawain", "Create an assignment")
-                : t("Bagong pribadong kuwento", "New private story")}
+            ) : null}
+            <button className={next ? "btn-light" : "btn"} onClick={onNew}>
+              {!next && <PencilLine size={18} />}
+              {t("Bagong kuwento", "New story")}
             </button>
           </div>
         </div>
@@ -296,7 +291,7 @@ export function ClassroomHome({
                 </option>
                 {user.classIds.map((id) => (
                   <option key={id} value={id}>
-                    {id}
+                    {classLabel(id, lang)}
                   </option>
                 ))}
               </select>
@@ -312,7 +307,7 @@ export function ClassroomHome({
           </label>
         </div>
       </div>
-      <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-5">
+      <div className="grid gap-5 story-grid">
         {visible.map((story) => {
           const submitted = new Set(story.chapters.map((ch) => ch.authorId))
             .size;
@@ -395,7 +390,7 @@ export function ClassroomHome({
                   <PencilLine size={16} />
                 )}{" "}
                 {teacher
-                  ? t("Buksan ang pagrepaso", "Open review")
+                  ? t("Buksan sa Gabay ng guro", "Open in Teacher review")
                   : t("Buksan ang pagsusulat", "Open writing canvas")}
                 <ArrowRight size={15} />
               </button>
@@ -411,8 +406,8 @@ export function ClassroomHome({
           )}
         </p>
       )}
-      <div className="grid lg:grid-cols-[1.2fr_1fr] gap-5">
-        <section className="card space-y-4">
+      <div className="grid lg:grid-cols-2 gap-5 items-stretch">
+        <section className="card h-full space-y-4">
           <h3 className="font-serif text-xl font-bold">
             {t("Kamakailang gawain", "Recent activity")}
           </h3>
@@ -453,7 +448,7 @@ export function ClassroomHome({
             )}
           </p>
         </section>
-        <section className="card bg-slate-50 space-y-4">
+        <section className="card h-full bg-slate-50 space-y-4">
           <span className="badge">
             <Sparkles size={13} />
             {t("Gabayan ang unang paggamit", "Guided first use")}

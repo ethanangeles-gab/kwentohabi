@@ -1,3 +1,4 @@
+import { setLanguage } from "./language.mjs";
 import { chromium } from "@playwright/test";
 import AxeBuilder from "@axe-core/playwright";
 import assert from "node:assert/strict";
@@ -29,7 +30,7 @@ try {
   const errors = [];
   teacher.on("pageerror", (error) => errors.push(error.message));
   await teacher.goto(f.url);
-  await teacher.getByRole("button", { name: "English", exact: true }).click();
+  await setLanguage(teacher, "en");
   const workspace = async (page) =>
     (await page.request.get(f.url + "/api/workspace")).json();
   const refresh = async (page) => {
@@ -159,7 +160,7 @@ try {
     .getByRole("combobox", { name: "Sign in as", exact: true })
     .selectOption("student");
   await maria.getByLabel(/username/i).fill("maria");
-  await maria.getByLabel("Password", { exact: true }).fill(password("maria"));
+  await maria.getByLabel(/^Password\s*\*?$/).fill(password("maria"));
   await maria.getByRole("button", { name: "Sign in", exact: true }).click();
   await maria
     .getByRole("heading", {
@@ -319,7 +320,7 @@ try {
     .getByRole("combobox", { name: "Sign in as", exact: true })
     .selectOption("student");
   await broken.getByLabel(/username/i).fill("jose");
-  await broken.getByLabel("Password", { exact: true }).fill(password("jose"));
+  await broken.getByLabel(/^Password\s*\*?$/).fill(password("jose"));
   await broken.getByRole("button", { name: "Sign in", exact: true }).click();
   await broken
     .getByRole("button", { name: "Writing canvas", exact: true })
@@ -395,28 +396,16 @@ try {
   await scan(teacher, "Story wiki profiles");
   checks.push("One fictional demonstration has source-linked story profiles");
   await teacher.getByText("Help & project", { exact: true }).click();
-  await teacher.getByRole("button", { name: "BMC & Q&A", exact: true }).click();
   await teacher
-    .getByRole("button", { name: "Q&A Defense Sheet", exact: true })
+    .getByRole("button", { name: "Teacher's guidance", exact: true })
     .click();
-  assert(
-    await teacher
-      .getByRole("combobox", { name: "Question topic", exact: true })
-      .isVisible(),
-  );
-  assert(
-    await teacher
-      .getByRole("textbox", { name: "Search defense questions", exact: true })
-      .isVisible(),
-  );
-  const accordion = teacher
-    .locator('button[aria-controls^="defense-answer-"]')
-    .first();
-  assert(
-    ["true", "false"].includes(await accordion.getAttribute("aria-expanded")),
-  );
-  await scan(teacher, "Defense filters and accordion");
-  checks.push("Q&A filters and accordions expose accessible names and state");
+  await teacher
+    .getByRole("heading", {
+      name: "Guide young writers, one chapter at a time.",
+    })
+    .waitFor();
+  await scan(teacher, "Teacher's guidance");
+  checks.push("Teacher's guidance opens from the help menu and passes axe");
   await teacher.getByRole("button", { name: "Classroom", exact: true }).click();
   await teacher.setViewportSize({ width: 390, height: 844 });
   await teacher.screenshot({
@@ -428,21 +417,31 @@ try {
     scroll: document.documentElement.scrollWidth,
   }));
   assert(small.scroll <= small.width + 1);
+  await maria.setViewportSize({ width: 1440, height: 900 });
+  await setLanguage(maria, "en");
+  await maria.getByText("Help & project", { exact: true }).click();
+  assert(
+    (await maria
+      .locator("#help-menu")
+      .getByRole("button", { name: /^BMC|Teacher's guidance/ })
+      .count()) === 0,
+    "Student help menu must not show BMC or Teacher's guidance",
+  );
+  await maria
+    .getByRole("button", { name: "Student's guidance", exact: true })
+    .click();
+  await maria
+    .getByRole("heading", {
+      name: "Your story, your voice. Let's write it well.",
+    })
+    .waitFor();
+  await scan(maria, "Student's guidance");
+  checks.push("Student's guidance replaces BMC for students and passes axe");
   let layoutStates = 0;
   for (const width of [320, 390, 768, 1440, 1920]) {
     await maria.setViewportSize({ width, height: 900 });
     for (const language of ["en", "tl"]) {
-      const current = await maria.evaluate(() => document.documentElement.lang);
-      if (
-        (language === "en" && current !== "en") ||
-        (language === "tl" && current !== "fil")
-      )
-        await maria
-          .getByRole("button", {
-            name: language === "en" ? "English" : "Filipino",
-            exact: true,
-          })
-          .click();
+      await setLanguage(maria, language);
       for (const name of language === "en"
         ? ["Classroom", "Writing canvas", "Story wiki", "Materials"]
         : ["Silid-aralan", "Pagsusulat", "Wiki ng kuwento", "Mga materyales"]) {
@@ -454,38 +453,41 @@ try {
         );
         layoutStates++;
       }
+      await maria
+        .getByText(
+          language === "en" ? "Help & project" : "Tulong at proyekto",
+          { exact: true },
+        )
+        .click();
+      await maria
+        .getByRole("button", {
+          name:
+            language === "en"
+              ? "Student's guidance"
+              : "Patnubay para sa mag-aaral",
+          exact: true,
+        })
+        .click();
+      assert(
+        (await maria.evaluate(() => document.documentElement.scrollWidth)) <=
+          width + 1,
+        `Student's guidance overflow ${language}/${width}`,
+      );
+      layoutStates++;
     }
   }
   for (const width of [320, 768, 1920]) {
     await teacher.setViewportSize({ width, height: 1000 });
     for (const language of ["en", "tl"]) {
-      const current = await teacher.evaluate(
-        () => document.documentElement.lang,
-      );
-      if (
-        (language === "en" && current !== "en") ||
-        (language === "tl" && current !== "fil")
-      )
-        await teacher
-          .getByRole("button", {
-            name: language === "en" ? "English" : "Filipino",
-            exact: true,
-          })
-          .click();
+      await setLanguage(teacher, language);
       await teacher
         .getByText(
           language === "en" ? "Help & project" : "Tulong at proyekto",
           { exact: true },
         )
         .click();
-      await teacher
-        .getByRole("button", { name: "BMC & Q&A", exact: true })
-        .click();
       for (const name of [
-        "9-Block Canvas",
-        language === "en" ? "Q&A Defense Sheet" : "Q&A Defense Cheat Sheet",
-        "Unit Economics",
-        "Infographics & Mind Map",
+        language === "en" ? "Teacher's guidance" : "Patnubay para sa guro",
       ]) {
         await teacher.getByRole("button", { name, exact: true }).click();
         assert(
@@ -493,7 +495,7 @@ try {
             () => document.documentElement.scrollWidth,
           )) <=
             width + 1,
-          `BMC overflow ${name}/${language}/${width}`,
+          `Teacher's guidance overflow ${name}/${language}/${width}`,
         );
         layoutStates++;
       }
