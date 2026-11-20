@@ -103,10 +103,8 @@ try {
   await page.reload();
   const role = page.getByRole("combobox", { name: "Sign in as", exact: true });
   await role.selectOption("teacher");
-  await page
-    .getByLabel("Username / Email", { exact: true })
-    .fill(student.username);
-  await page.getByLabel("Password", { exact: true }).fill(student.password);
+  await page.getByLabel(/^Username \/ Email\s*\*?$/).fill(student.username);
+  await page.getByLabel(/^Password\s*\*?$/).fill(student.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page
     .getByRole("alert")
@@ -138,12 +136,8 @@ try {
   await role.waitFor();
   assert.equal(await role.inputValue(), "");
   await role.selectOption("teacher");
-  await page
-    .getByLabel("Username / Email", { exact: true })
-    .fill("role-teacher");
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill("role-browser-password-123");
+  await page.getByLabel(/^Username \/ Email\s*\*?$/).fill("role-teacher");
+  await page.getByLabel(/^Password\s*\*?$/).fill("role-browser-password-123");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page
     .getByRole("heading", { name: "Guide the next chapter.", exact: true })

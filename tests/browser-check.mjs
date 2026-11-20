@@ -1,3 +1,4 @@
+import { setLanguage } from "./language.mjs";
 import {
   createTestDirectory,
   removeTestDirectory,
@@ -46,11 +47,9 @@ try {
       localStorage.setItem("kwentohabi-language", '"en"');
   });
   await page.goto(url);
-  await page.getByLabel("School", { exact: true }).fill("KwentoHabi QA School");
+  await page.getByLabel(/^School\s*\*?$/).fill("KwentoHabi QA School");
   await page.getByLabel(/username/i).fill("qa-teacher");
-  await page
-    .getByLabel("Password", { exact: true })
-    .fill("qa-classroom-password");
+  await page.getByLabel(/^Password\s*\*?$/).fill("qa-classroom-password");
   await page
     .getByRole("button", { name: "Set up school", exact: true })
     .click();
@@ -85,9 +84,9 @@ try {
       "Story wiki",
       "Teacher review",
       "Materials",
-      "BMC & Q&A",
+      "Teacher's guidance",
     ]) {
-      if (name === "BMC & Q&A")
+      if (name === "Teacher's guidance")
         await page
           .getByText(/Help & project|Tulong at proyekto/, { exact: true })
           .click();
@@ -100,7 +99,21 @@ try {
       if (layout.scroll > width + 1)
         throw Error(`Overflow ${name} at ${width}: ${layout.scroll}`);
     }
-    await page.getByRole("button", { name: "Filipino", exact: true }).click();
+    if (
+      await page
+        .locator("header")
+        .getByRole("button", { name: /^(English|Filipino)$/ })
+        .count()
+    )
+      throw Error("Language toggle must live only in Profile settings");
+    if (
+      (await page.locator("html").getAttribute("translate")) !== "no" ||
+      (await page
+        .locator('meta[name="google"][content="notranslate"]')
+        .count()) !== 1
+    )
+      throw Error("Browser page translation must be disabled");
+    await setLanguage(page, "tl");
     if ((await page.evaluate(() => document.documentElement.lang)) !== "fil")
       throw Error("Filipino document language missing");
     for (const name of [
@@ -109,9 +122,9 @@ try {
       "Wiki ng kuwento",
       "Gabay ng guro",
       "Mga materyales",
-      "BMC & Q&A",
+      "Patnubay para sa guro",
     ]) {
-      if (name === "BMC & Q&A")
+      if (name === "Patnubay para sa guro")
         await page
           .getByText(/Help & project|Tulong at proyekto/, { exact: true })
           .click();
@@ -122,7 +135,7 @@ try {
       if (scroll > width + 1)
         throw Error(`Filipino overflow ${name} at ${width}`);
     }
-    await page.getByRole("button", { name: "English", exact: true }).click();
+    await setLanguage(page, "en");
     if ((await page.evaluate(() => document.documentElement.lang)) !== "en")
       throw Error("English document language missing");
     if (width === 320) {
@@ -137,12 +150,17 @@ try {
   }
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByText("Help & project", { exact: true }).click();
-  await page.getByRole("button", { name: "BMC & Q&A", exact: true }).click();
+  if ((await page.getByRole("button", { name: /^BMC/ }).count()) !== 0)
+    throw Error("BMC & Q&A must be removed from the Help menu");
   await page
-    .getByRole("button", { name: "Unit Economics", exact: true })
+    .getByRole("button", { name: "Teacher's guidance", exact: true })
     .click();
-  await page.getByText(/Monthly shortfall: ₱28,550/).waitFor();
-  await page.screenshot({ path: "tmp/qa-economics.png", fullPage: true });
+  await page
+    .getByRole("heading", {
+      name: "Guide young writers, one chapter at a time.",
+    })
+    .waitFor();
+  await page.screenshot({ path: "tmp/qa-guidance.png", fullPage: true });
   await page.getByRole("button", { name: "Materials", exact: true }).click();
   await page
     .getByRole("button", { name: "Generate feedback", exact: true })
@@ -179,7 +197,7 @@ try {
     .selectOption("student");
   await page.getByLabel(/username/i).fill("maria");
   await page
-    .getByLabel("Password", { exact: true })
+    .getByLabel(/^Password\s*\*?$/)
     .fill(credentials.find((c) => c.username === "maria").password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await page
@@ -205,7 +223,7 @@ try {
     .selectOption("student");
   await peer.getByLabel(/username/i).fill("jose");
   await peer
-    .getByLabel("Password", { exact: true })
+    .getByLabel(/^Password\s*\*?$/)
     .fill(credentials.find((c) => c.username === "jose").password);
   await peer.getByRole("button", { name: "Sign in", exact: true }).click();
   await peer
@@ -291,7 +309,7 @@ try {
         responsiveViews: 60,
         errors,
         checks: [
-          "BMC loss",
+          "teacher guidance",
           "unscored evaluation",
           "dialog Escape and focus return",
           "student role",

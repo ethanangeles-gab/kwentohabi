@@ -15,7 +15,7 @@ import {
   type WritingDraft,
 } from "../utils/writingDrafts";
 import { Dialog } from "./Dialog";
-import { Mayakda } from "./Mayakda";
+import { Mayakda, MayakdaNote } from "./Mayakda";
 
 type Props = {
   story: StoryWorkspace;
@@ -183,20 +183,21 @@ export function StudentCanvas({
           </span>
         </div>
         {story.chapters.length === 0 && (
-          <div className="mayakda-empty-state card">
-            <Mayakda size={112} pose="notice" />
-            <div>
-              <p className="font-serif text-lg font-bold">
-                {t("Wala pang kabanata", "No chapters yet")}
-              </p>
-              <p className="text-sm text-slate-600">
-                {t(
-                  "Simulan natin ang unang talata.",
-                  "Let's weave the opening paragraph.",
-                )}
-              </p>
-            </div>
-          </div>
+          <MayakdaNote
+            lang={lang}
+            pose="nest"
+            size={96}
+            className="card"
+            title={t(
+              "Wala pang kabanata — simulan natin!",
+              "No chapters yet — let's start!",
+            )}
+          >
+            {t(
+              "Dadalhin ni Mayakda ang bawat pahinang isusulat mo. Ikaw ang may-akda.",
+              "Mayakda carries every page you write. You are the author.",
+            )}
+          </MayakdaNote>
         )}
         {!focusMode &&
           story.chapters.map((ch) => (
@@ -453,7 +454,19 @@ export function StudentCanvas({
                   saving || !draft.text.trim() || story.status !== "active"
                 }
               >
-                {t("I-save ang kabanata", "Save chapter")}
+                {saving ? (
+                  <>
+                    <Mayakda
+                      pose="weave"
+                      size={26}
+                      className="-my-1"
+                      interactive={false}
+                    />
+                    {t("Hinahabi ang kabanata…", "Weaving your chapter…")}
+                  </>
+                ) : (
+                  t("I-save ang kabanata", "Save chapter")
+                )}
               </button>
               <button
                 type="button"
@@ -494,17 +507,9 @@ export function StudentCanvas({
         className={`space-y-4 min-w-0 xl:sticky xl:top-4 ${focusMode ? "hidden" : ""}`}
       >
         <div className="card continuity-review space-y-3">
-          <div className="flex items-center gap-3">
-            {checking && <Mayakda size={64} pose="notice" />}
-            <h3 className="font-bold text-lg">
-              {t("Pagsusuri ng continuity", "Continuity review")}
-            </h3>
-          </div>
-          {checking && (
-            <p className="text-sm text-amber-200" role="status">
-              {t("May napansin ako—inaayos ang mga hibla…", "Mayakda is following the story threads…")}
-            </p>
-          )}
+          <h3 className="font-bold text-lg">
+            {t("Pagsusuri ng continuity", "Continuity review")}
+          </h3>
           <p className="text-sm review-hint">
             {story.checkMethod === "gemini"
               ? t("Huling pagsusuri: AI", "Last check: AI")
@@ -520,9 +525,19 @@ export function StudentCanvas({
             onClick={() => onRunCheck(useAI)}
             disabled={checking || saving || story.chapters.length === 0}
           >
-            {checking
-              ? t("Sinusuri…", "Checking…")
-              : t("Suriin ang kasalukuyang draft", "Check current draft")}
+            {checking ? (
+              <>
+                <Mayakda
+                  pose="weave"
+                  size={26}
+                  className="-my-1"
+                  interactive={false}
+                />
+                {t("Sinusuri…", "Checking…")}
+              </>
+            ) : (
+              t("Suriin ang kasalukuyang draft", "Check current draft")
+            )}
           </button>
           <p className="text-xs review-hint">
             {t(
@@ -576,6 +591,17 @@ export function StudentCanvas({
             </p>
           ) : (
             <>
+              <MayakdaNote
+                lang={lang}
+                pose="notice"
+                size={64}
+                title={t("May napansin ako dito…", "I noticed something here…")}
+              >
+                {t(
+                  "Tingnan muli ang mga sipi sa ibaba. Ikaw ang magpapasya kung paano ito aayusin.",
+                  "Take a second look at the passages below. You decide how to resolve it.",
+                )}
+              </MayakdaNote>
               <label className="field">
                 {t("Piliing salungatan", "Choose conflict")}
                 <select

@@ -325,6 +325,19 @@ app.post(
   }),
 );
 app.post(
+  "/api/school",
+  route((req, res) => {
+    if (req.user.role !== "teacher")
+      fail(403, "Only teachers can change the school name.");
+    const school = string(req.body.school, "School name");
+    if (/[\u0000-\u001f\u007f]/.test(school))
+      fail(400, "School name cannot contain control characters.");
+    db.school = school;
+    persist();
+    res.json({ school });
+  }),
+);
+app.post(
   "/api/password",
   route((req, res) => {
     const record = db.users.find((u) => u.id === req.user.id)!;

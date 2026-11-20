@@ -104,3 +104,48 @@ test(
     );
   },
 );
+
+test(
+  "Only teachers can rename the school, and the name persists",
+  { timeout: 30000 },
+  async (t) => {
+    const f = await fixture();
+    t.after(() => f.cleanup());
+    const teacher = client(f.url),
+      student = client(f.url),
+      anonymous = client(f.url);
+    const setup = await teacher("/api/setup", {
+      school: "School",
+      username: "school-teacher",
+      password: "school-password-123",
+    });
+    const account = setup.data.accounts.find(
+      (entry: any) => entry.username === "maria",
+    );
+    await student("/api/login", { ...account, role: "student" });
+    assert.equal(
+      (await anonymous("/api/school", { school: "Anon" })).status,
+      401,
+    );
+    assert.equal(
+      (await student("/api/school", { school: "Student school" })).status,
+      403,
+    );
+    assert.equal((await teacher("/api/school", { school: "  " })).status, 400);
+    assert.equal(
+      (await teacher("/api/school", { school: "A\nB" })).status,
+      400,
+    );
+    const saved = await teacher("/api/school", {
+      school: "  Mataas na Paaralang Mabini  ",
+    });
+    assert.equal(saved.status, 200);
+    assert.equal(saved.data.school, "Mataas na Paaralang Mabini");
+    await f.stop();
+    await f.start();
+    assert.equal(
+      (await student("/api/workspace")).data.school,
+      "Mataas na Paaralang Mabini",
+    );
+  },
+);

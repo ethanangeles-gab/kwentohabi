@@ -7,7 +7,7 @@ import {
   isValidAccountIdentifier,
 } from "../utils/accountIdentifier";
 
-const RequiredMark = () => (
+export const RequiredMark = () => (
   <span className="required-mark" aria-hidden="true">
     *
   </span>

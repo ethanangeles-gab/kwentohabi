@@ -5,7 +5,6 @@ import type { Theme } from "../utils/theme";
 import { api } from "../utils/client";
 import { Dialog } from "./Dialog";
 import { PasswordControl } from "./AccountControls";
-import { PrivacyNotice } from "./PrivacyNotice";
 
 type Language = "tl" | "en";
 export function Avatar({
@@ -113,7 +112,9 @@ function ProfileSettings({
   user,
   school,
   lang,
+  onLangChange,
   onSaved,
+  onSchoolSaved,
   onClose,
   theme,
   onThemeChange,
@@ -122,7 +123,9 @@ function ProfileSettings({
   user: SessionUser;
   school: string;
   lang: Language;
+  onLangChange: (value: Language) => void;
   onSaved: (value: SessionUser) => void;
+  onSchoolSaved: (value: string) => void;
   onClose: () => void;
   theme: Theme;
   onThemeChange: (theme: Theme) => void;
@@ -252,7 +255,9 @@ function ProfileSettings({
           />
         </label>
         <div className="profile-school text-sm space-y-1">
-          <p className="font-semibold">{school}</p>
+          <p className="font-semibold">
+            {t("Paaralan", "School")}: {school}
+          </p>
           <p className="text-slate-500">
             {user.role === "teacher"
               ? t("Guro", "Teacher")
@@ -280,6 +285,9 @@ function ProfileSettings({
             : t("I-save ang profile", "Save profile")}
         </button>
       </form>
+      {user.role === "teacher" && (
+        <SchoolNameForm school={school} lang={lang} onSaved={onSchoolSaved} />
+      )}
       <section
         className="section-divider mt-6 pt-5 space-y-3"
         aria-label={t("Hitsura", "Appearance")}
@@ -319,6 +327,37 @@ function ProfileSettings({
       </section>
       <section
         className="section-divider mt-6 pt-5 space-y-3"
+        aria-label={t("Wika", "Language")}
+      >
+        <h3 className="font-semibold">{t("Wika", "Language")}</h3>
+        <p className="text-sm text-slate-500">
+          {t(
+            "Piliin ang wikang gagamitin sa KwentoHabi.",
+            "Choose the language KwentoHabi uses.",
+          )}
+        </p>
+        <div className="flex gap-2">
+          {(
+            [
+              ["tl", "Filipino"],
+              ["en", "English"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              className={lang === value ? "btn" : "btn-light"}
+              type="button"
+              lang={value === "tl" ? "fil" : "en"}
+              aria-pressed={lang === value}
+              onClick={() => onLangChange(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </section>
+      <section
+        className="section-divider mt-6 pt-5 space-y-3"
         aria-label={t("Seguridad", "Security")}
       >
         <h3 className="font-semibold">{t("Seguridad", "Security")}</h3>
@@ -328,14 +367,97 @@ function ProfileSettings({
   );
 }
 
+function SchoolNameForm({
+  school,
+  lang,
+  onSaved,
+}: {
+  school: string;
+  lang: Language;
+  onSaved: (value: string) => void;
+}) {
+  const t = (tl: string, en: string) => (lang === "tl" ? tl : en);
+  const [value, setValue] = useState(school),
+    [error, setError] = useState(""),
+    [saved, setSaved] = useState(false),
+    [busy, setBusy] = useState(false);
+  return (
+    <form
+      className="section-divider mt-6 pt-5 space-y-3"
+      aria-label={t("Paaralan", "School")}
+      onSubmit={async (event) => {
+        event.preventDefault();
+        setBusy(true);
+        setError("");
+        setSaved(false);
+        try {
+          const result = await api<{ school: string }>("/api/school", {
+            school: value,
+          });
+          onSaved(result.school);
+          setValue(result.school);
+          setSaved(true);
+        } catch (e: any) {
+          setError(e.message);
+        } finally {
+          setBusy(false);
+        }
+      }}
+    >
+      <h3 className="font-semibold">{t("Paaralan", "School")}</h3>
+      <label className="field">
+        {t("Pangalan ng paaralan", "School name")}
+        <input
+          name="schoolName"
+          value={value}
+          required
+          maxLength={200}
+          disabled={busy}
+          autoComplete="organization"
+          onChange={(e) => {
+            setValue(e.target.value);
+            setSaved(false);
+          }}
+        />
+      </label>
+      <p className="text-xs text-slate-500">
+        {t(
+          "Makikita ito ng lahat ng guro at mag-aaral sa itaas ng workspace.",
+          "Everyone in the workspace sees this name in the header.",
+        )}
+      </p>
+      {error && (
+        <p role="alert" className="error">
+          {error}
+        </p>
+      )}
+      {saved && (
+        <p role="status" className="notice">
+          {t("Nai-save ang pangalan ng paaralan.", "School name saved.")}
+        </p>
+      )}
+      <button
+        className="btn"
+        disabled={busy || !value.trim() || value.trim() === school}
+      >
+        {busy
+          ? t("Sine-save…", "Saving…")
+          : t("I-save ang paaralan", "Save school name")}
+      </button>
+    </form>
+  );
+}
+
 export function ProfileMenu({
   user,
   school,
   lang,
+  onLangChange,
   theme,
   onThemeChange,
   themePersisted,
   onSaved,
+  onSchoolSaved,
   clearDrafts,
   onClearDrafts,
   onSignOut,
@@ -343,10 +465,12 @@ export function ProfileMenu({
   user: SessionUser;
   school: string;
   lang: Language;
+  onLangChange: (value: Language) => void;
   theme: Theme;
   onThemeChange: (value: Theme) => void;
   themePersisted: boolean;
   onSaved: (value: SessionUser) => void;
+  onSchoolSaved: (value: string) => void;
   clearDrafts: boolean;
   onClearDrafts: (value: boolean) => void;
   onSignOut: () => void;
@@ -425,7 +549,6 @@ export function ProfileMenu({
               )}
             </p>
           )}
-          <PrivacyNotice lang={lang} />
           <label className="flex items-start gap-2 text-sm p-2">
             <input
               type="checkbox"
@@ -449,7 +572,9 @@ export function ProfileMenu({
           user={user}
           school={school}
           lang={lang}
+          onLangChange={onLangChange}
           onSaved={onSaved}
+          onSchoolSaved={onSchoolSaved}
           onClose={() => {
             setSettings(false);
             trigger.current?.focus();

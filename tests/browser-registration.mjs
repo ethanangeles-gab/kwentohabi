@@ -177,9 +177,7 @@ try {
       .getByLabel(/^Full name\s*\*$/)
       .fill(role === "student" ? "Registered Learner" : "Registered Teacher");
     await page.getByLabel(/^Username \/ Email\s*\*$/).fill(username);
-    await page
-      .getByLabel(/^Password\s*\*$/)
-      .fill("new-signup-password-123");
+    await page.getByLabel(/^Password\s*\*$/).fill("new-signup-password-123");
     await page
       .getByLabel(/^Confirm password\s*\*$/)
       .fill("new-signup-password-123");
@@ -230,11 +228,9 @@ try {
     .getByRole("combobox", { name: "Sign in as", exact: true })
     .selectOption("student");
   await learner
-    .getByLabel("Username / Email", { exact: true })
+    .getByLabel(/^Username \/ Email\s*\*?$/)
     .fill("SIGNUP.STUDENT+STORY@EXAMPLE.SCHOOL");
-  await learner
-    .getByLabel("Password", { exact: true })
-    .fill("new-signup-password-123");
+  await learner.getByLabel(/^Password\s*\*?$/).fill("new-signup-password-123");
   await learner.getByRole("button", { name: "Sign in", exact: true }).click();
   await learner
     .getByRole("heading", {
