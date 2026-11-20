@@ -88,6 +88,18 @@ export function Mayakda({
     const update = () => {
       if (!root.current || !speech.current) return;
       const anchor = root.current.getBoundingClientRect();
+      if (
+        anchor.width <= 0 ||
+        anchor.height <= 0 ||
+        anchor.bottom <= 0 ||
+        anchor.top >= innerHeight ||
+        anchor.right <= 0 ||
+        anchor.left >= innerWidth
+      ) {
+        setMessageIndex(-1);
+        setSpeechPosition(null);
+        return;
+      }
       const rightSpace = innerWidth - anchor.right - 32;
       speech.current.style.setProperty(
         "--speech-width",
@@ -140,10 +152,26 @@ export function Mayakda({
     const observer = new ResizeObserver(update);
     if (speech.current) observer.observe(speech.current);
     if (root.current) observer.observe(root.current);
+    // Also handle mascots clipped by a scrolling ancestor rather than the window.
+    const visibility = new IntersectionObserver(
+      ([entry]) => {
+        if (
+          !entry.isIntersecting ||
+          entry.intersectionRect.width <= 0 ||
+          entry.intersectionRect.height <= 0
+        ) {
+          setMessageIndex(-1);
+          setSpeechPosition(null);
+        }
+      },
+      { threshold: [0, Number.EPSILON] },
+    );
+    if (root.current) visibility.observe(root.current);
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, { passive: true, capture: true });
     return () => {
       observer.disconnect();
+      visibility.disconnect();
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
@@ -218,7 +246,7 @@ export function Mayakda({
             </g>
           </svg>
         )}
-        {reacting && (
+        {interactive && reacting && (
           <span className="mk-writing-tools">
             <Pencil className="mk-pencil" focusable="false" />
             <FileText className="mk-paper" focusable="false" />
@@ -230,7 +258,7 @@ export function Mayakda({
   return (
     <span
       ref={root}
-      className={`mayakda mayakda-${pose}${reacting ? " mayakda-is-reacting" : ""} ${className}`.trim()}
+      className={`mayakda mayakda-${pose}${interactive && reacting ? " mayakda-is-reacting" : ""} ${className}`.trim()}
       style={{ width: size }}
       data-facing={facing}
       aria-hidden={interactive ? undefined : true}

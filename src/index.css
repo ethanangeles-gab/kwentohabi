@@ -334,49 +334,29 @@ mark.hl-distress {
     display: none;
   }
 }
-/* Sign-in: a woven backdrop, a two-panel card, and Mayakda on the story side. */
+/* Sign-in: black and crimson stripes edged in gold, a two-panel card, and Mayakda on the story side. */
 .auth-shell {
   --auth-story: #17403a;
   --auth-story-ink: #fff6e6;
   --auth-story-muted: #d8ccb6;
   --auth-story-accent: #f2c66d;
-  background:
+  background-color: #0a0a0a;
+  background-image:
     repeating-linear-gradient(
       90deg,
-      rgb(23 64 58 / 0.5) 0 14px,
-      transparent 14px 72px
+      rgb(255 255 255 / 0.03) 0 1px,
+      transparent 1px 6px
     ),
     repeating-linear-gradient(
-      0deg,
-      rgb(242 198 109 / 0.32) 0 10px,
-      transparent 10px 60px
-    ),
-    repeating-linear-gradient(
-      45deg,
-      rgb(255 246 230 / 0.06) 0 2px,
-      transparent 2px 12px
-    ),
-    #7b4a2a;
+      90deg,
+      #0a0a0a 0 64px,
+      #d4a04a 64px 67px,
+      #6a0b0b 67px 131px,
+      #d4a04a 131px 134px
+    );
 }
 :root[data-theme="dark"] .auth-shell {
   --auth-story: #10302b;
-  background:
-    repeating-linear-gradient(
-      90deg,
-      rgb(16 48 43 / 0.7) 0 14px,
-      transparent 14px 72px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgb(242 198 109 / 0.14) 0 10px,
-      transparent 10px 60px
-    ),
-    repeating-linear-gradient(
-      45deg,
-      rgb(255 246 230 / 0.04) 0 2px,
-      transparent 2px 12px
-    ),
-    #2a1a10;
 }
 .auth-card {
   display: grid;

@@ -332,7 +332,12 @@ export default function App() {
               <p className="auth-mascot-bubble">
                 {t("Kumusta! Ako si Mayakda.", "Hi! I'm Mayakda.")}
               </p>
-              <Mayakda pose="nest" size={150} lang={lang} />
+              <Mayakda
+                pose="nest"
+                size={150}
+                lang={lang}
+                interactive={authView === "register"}
+              />
             </div>
           </section>
           <section className="auth-form space-y-5">
