@@ -1,105 +1,87 @@
 import React from "react";
 
-type MayakdaProps = {
-  size?: number;
-  pose?: "brand" | "notice" | "quiet";
-  className?: string;
-};
+/**
+ * Mayakda — maya (the Philippine tree sparrow) + akda (a literary work),
+ * also read as "may-akda" (author). A helper, never the writer: it carries
+ * the student's pages and points at details worth a second look.
+ *
+ * The artwork is public/assets/brand/mayakda.webp. Poses are motion only:
+ *  - nest:   a happy hop (empty states, login)
+ *  - weave:  a busy waddle (saving / loading)
+ *  - notice: a curious head tilt with a glint (continuity checks)
+ *  - quiet:  slow breathing, slightly muted (teacher-review screens)
+ *
+ * The image is decorative (empty alt, aria-hidden); the words beside it carry
+ * the meaning. All motion lives in index.css and stops under
+ * prefers-reduced-motion.
+ */
+export type MayakdaPose = "nest" | "weave" | "notice" | "quiet";
+
+const SRC = "/assets/brand/mayakda.webp";
+const WIDTH = 431;
+const HEIGHT = 487;
 
 export function Mayakda({
-  size = 128,
-  pose = "brand",
+  pose = "nest",
+  size = 96,
   className = "",
-}: MayakdaProps) {
-  const notice = pose === "notice";
-  const quiet = pose === "quiet";
-
+}: {
+  pose?: MayakdaPose;
+  /** Rendered width in pixels; height follows the artwork's proportions. */
+  size?: number;
+  className?: string;
+}) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 160 160"
-      role="img"
-      aria-label="Mayakda, ang maya na tagahabi ng kuwento"
-      className={`mayakda mayakda-${pose} ${className}`}
+    <span
+      className={`mayakda mayakda-${pose} ${className}`.trim()}
+      style={{ width: size }}
+      aria-hidden="true"
     >
-      <ellipse cx="80" cy="146" rx="48" ry="7" fill="#173f3a" opacity=".10" />
-      <path
-        d="M39 146c-7-19 3-35 20-42 15-6 32 1 41 14 10 15 5 28-4 35H39Z"
-        fill="#b97a46"
-        stroke="#173f3a"
-        strokeWidth="3"
+      <img
+        className="mk-img"
+        src={SRC}
+        alt=""
+        width={WIDTH}
+        height={HEIGHT}
+        decoding="async"
+        draggable={false}
       />
-      <path
-        d="M46 143c18-9 49-9 68 0M47 132c20-8 45-8 65 0"
-        fill="none"
-        stroke="#d5a653"
-        strokeWidth="4"
-        strokeLinecap="round"
-        strokeDasharray="5 7"
-      />
-      <ellipse cx="80" cy="82" rx="43" ry="49" fill="#9a6743" />
-      <ellipse cx="80" cy="84" rx="33" ry="38" fill="#b98557" />
-      <path
-        d="M44 74c9-25 27-38 51-37 17 1 29 10 34 24-18-7-45-5-85 13Z"
-        fill="#5d493a"
-      />
-      <circle cx="64" cy="76" r="4" fill="#172b2a" />
-      <circle cx="96" cy="76" r="4" fill="#172b2a" />
-      <circle cx="65" cy="75" r="1.2" fill="#fff" />
-      <circle cx="97" cy="75" r="1.2" fill="#fff" />
-      <path d="m80 82 10 5-10 7-10-7Z" fill="#d5a653" />
-      <path
-        d="M49 67c-12 7-16 19-11 29M111 67c12 7 16 19 11 29"
-        fill="none"
-        stroke="#5d493a"
-        strokeWidth="8"
-        strokeLinecap="round"
-      />
-      <path
-        d="M51 111c20 8 40 8 58-1"
-        fill="none"
-        stroke="#f1e1bc"
-        strokeWidth="12"
-        strokeLinecap="round"
-      />
-      <path
-        d="M51 111c20 8 40 8 58-1"
-        fill="none"
-        stroke="#1e3a8a"
-        strokeWidth="5"
-        strokeLinecap="round"
-        strokeDasharray="7 7"
-      />
-      <path
-        d="M67 116l-9 20M93 116l9 20"
-        fill="none"
-        stroke="#6f4a32"
-        strokeWidth="5"
-        strokeLinecap="round"
-      />
-      {notice && (
-        <g className="mayakda-thread">
-          <path
-            d="M103 89c24 4 31 21 21 30-8 8-21-1-14-9"
-            fill="none"
-            stroke="#d97706"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-          <circle cx="108" cy="111" r="3" fill="#d97706" />
-        </g>
+      {pose === "notice" && (
+        <svg className="mk-glint" viewBox="0 0 24 24" focusable="false">
+          <g stroke="currentColor" strokeWidth="2.6" strokeLinecap="round">
+            <path d="M12 3v6" />
+            <path d="M20 7l-4 4" />
+            <path d="M4 7l4 4" />
+          </g>
+        </svg>
       )}
-      {!quiet && (
-        <path
-          d="M87 88c15 5 23 14 27 27"
-          fill="none"
-          stroke="#c2410c"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          className="mayakda-loose-thread"
-        />
-      )}
-    </svg>
+    </span>
+  );
+}
+
+/** Mayakda beside a short message, laid out as a quiet callout. */
+export function MayakdaNote({
+  pose,
+  size = 72,
+  title,
+  children,
+  className = "",
+  role,
+}: {
+  pose: MayakdaPose;
+  size?: number;
+  title?: React.ReactNode;
+  children?: React.ReactNode;
+  className?: string;
+  role?: "status";
+}) {
+  return (
+    <div className={`mayakda-note ${className}`.trim()} role={role}>
+      <Mayakda pose={pose} size={size} />
+      <div className="min-w-0 space-y-1">
+        {title && <p className="mayakda-note-title">{title}</p>}
+        {children && <div className="text-sm text-slate-600">{children}</div>}
+      </div>
+    </div>
   );
 }

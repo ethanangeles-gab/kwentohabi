@@ -69,14 +69,14 @@ export function TeacherDashboard({
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 justify-between items-center">
         <div className="flex items-center gap-3">
-          <Mayakda size={58} pose="quiet" className="teacher-mayakda" />
+          <Mayakda pose="quiet" size={40} />
           <div>
-          <p className="eyebrow">
-            {t("Guro ang gumagabay", "Teacher-led review")}
-          </p>
-          <h3 className="font-serif text-xl font-bold">
-            {t("Mga kailangang aksyunan", "Your review queue")}
-          </h3>
+            <p className="eyebrow">
+              {t("Guro ang gumagabay", "Teacher-led review")}
+            </p>
+            <h3 className="font-serif text-xl font-bold">
+              {t("Mga kailangang aksyunan", "Your review queue")}
+            </h3>
           </div>
         </div>
         <div className="flex flex-wrap gap-2">

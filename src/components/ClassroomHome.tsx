@@ -89,7 +89,7 @@ export function ClassroomHome({
   return (
     <section className="space-y-7">
       <div className="welcome-panel">
-        <div className="welcome-content space-y-4 max-w-2xl">
+        <div className="space-y-4 max-w-2xl">
           <p className="eyebrow">
             {school} /{" "}
             {teacher
@@ -146,19 +146,6 @@ export function ClassroomHome({
             </button>
           </div>
         </div>
-        <img
-          src={
-            teacher
-              ? "/assets/kwentohabi-teacher.png"
-              : "/assets/kwentohabi-students.png"
-          }
-          alt={
-            teacher
-              ? "Guro na gumagabay sa isang klase"
-              : "Mag-aaral na sama-samang sumusulat"
-          }
-          className="welcome-illustration"
-        />
         <div className="loom-motif" aria-hidden="true">
           <div />
           <div />
