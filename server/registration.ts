@@ -47,29 +47,55 @@ export function registerPublicRegistration(
 ) {
   // Allow a classroom behind one address while bounding public password-hash work.
   const attempts = new Map<string, { count: number; until: number }>();
+  const persistentAttempts =
+    process.env.VERCEL === "1" ||
+    Boolean(
+      process.env.DATABASE_URL ||
+        process.env.POSTGRES_URL ||
+        process.env.POSTGRES_PRISMA_URL,
+    );
   app.post(
     "/api/register",
     route((req: any, res: any) => {
       const now = Date.now(),
-        ip = req.ip || "local";
-      if (attempts.size >= 10000) {
-        for (const [key, bucket] of attempts)
-          if (bucket.until <= now) attempts.delete(key);
-        if (!attempts.has(ip) && attempts.size >= 10000)
-          fail(429, "Account creation is busy. Please try again later.");
+        ip = req.ip || "local",
+        key = `registration:${ip}`;
+      let current: { count: number; until: number };
+      if (persistentAttempts) {
+        if (Object.keys(db.rateLimits).length >= 10000) {
+          for (const [rateKey, value] of Object.entries(db.rateLimits))
+            if (value.until <= now) delete db.rateLimits[rateKey];
+          if (!db.rateLimits[key] && Object.keys(db.rateLimits).length >= 10000)
+            fail(429, "Account creation is busy. Please try again later.");
+        }
+        const bucket = db.rateLimits[key];
+        current =
+          bucket && bucket.until > now
+            ? bucket
+            : { count: 0, until: now + 15 * 60000 };
+      } else {
+        if (attempts.size >= 10000) {
+          for (const [rateKey, bucket] of attempts)
+            if (bucket.until <= now) attempts.delete(rateKey);
+          if (!attempts.has(ip) && attempts.size >= 10000)
+            fail(429, "Account creation is busy. Please try again later.");
+        }
+        const bucket = attempts.get(ip);
+        current =
+          bucket && bucket.until > now
+            ? bucket
+            : { count: 0, until: now + 15 * 60000 };
       }
-      const bucket = attempts.get(ip);
-      const current =
-        bucket && bucket.until > now
-          ? bucket
-          : { count: 0, until: now + 15 * 60000 };
       if (current.count >= 200)
         fail(
           429,
           "Too many account creation attempts. Try again in 15 minutes.",
         );
       current.count++;
-      attempts.set(ip, current);
+      if (persistentAttempts) {
+        db.rateLimits[key] = current;
+        persist();
+      } else attempts.set(ip, current);
       if (!db.users.length)
         fail(409, "Your school must complete setup before you can join.");
       if (

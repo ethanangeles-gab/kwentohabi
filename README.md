@@ -22,6 +22,26 @@ At sign-in, choose **Teacher** or **Student** from **Sign in as**, then enter th
 
 The server binds to `127.0.0.1` by default. Complete setup before allowing network access. On Windows, stop a development process before running `npm ci` if native build-library files are locked. Existing `.env.local` settings and credentials should be preserved.
 
+## Deploy to Vercel
+
+The Vercel configuration builds the Vite site to `dist` and serves the Express API through one Node.js Function. Vercel's filesystem is not durable or shared between function instances, so Vercel requests use Postgres instead of the local JSON file. Connect a Postgres database through the Vercel Marketplace (Neon is supported) and make its connection string available as `DATABASE_URL` or `POSTGRES_URL` in the Vercel environments you deploy.
+
+1. Import this repository into Vercel. Keep the configured Vite framework, `npm run build` build command, and `dist` output directory.
+2. Add a Postgres integration and expose its connection string as `DATABASE_URL` (or `POSTGRES_URL`) for Production and Preview. Use a separate database for Preview if preview data must not share school records with Production.
+3. Pull the environment variable to a trusted local shell and create the database table:
+
+   ```powershell
+   vercel env pull .env.vercel.local
+   npm ci
+   npm run db:migrate
+   ```
+
+4. Deploy. The first API request initializes an empty workspace; finish first-run school setup on the deployed site. Set `APP_ORIGIN` to the exact production origin if origin validation needs a canonical host. Cookies are automatically marked Secure on Vercel. Add `GEMINI_API_KEY` only if optional provider checks are wanted.
+
+The database migration only creates the table and never replaces an existing row. Existing local `data/workspace.json` files are **not uploaded or imported**; a fresh database starts with first-run setup. Do not copy real school/student records to a hosted database without the school's authorization and approved handling process.
+
+The current backend stores one school's complete workspace in a single JSONB record and uses revision checks to prevent concurrent requests from silently overwriting one another. It is suitable for a low-volume prototype/pilot, not multi-tenant isolation or high-throughput production. Continue protecting the database connection string and configure database backups/retention. Document import runs in an isolated function with its worker included in the deployment bundle.
+
 ## Create an account and invite class members
 
 The login page includes **Create account** for people who do not yet have an account. Choose Student or Teacher, enter a full name and a unique username or email address, paste a school join code, choose/confirm a password of at least 12 characters, and acknowledge the privacy notice. Successful registration signs the user in and opens the matching role home. **Back to sign in** returns to the existing login form. No password is stored in browser storage. The identifier field accepts an ordinary email address (up to 254 characters) or the existing 3–80 character username format. It trims outer whitespace and compares identifiers without case sensitivity. Sign in with the same username or email used when creating the account. This is one chosen login identifier, not two separate account fields; entering an email does not send a verification message or verify mailbox ownership.

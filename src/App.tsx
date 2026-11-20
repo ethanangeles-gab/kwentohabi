@@ -15,6 +15,7 @@ import {
   Library,
   House,
   Menu,
+  Settings,
 } from "lucide-react";
 import { ProfileMenu } from "./components/ProfileMenu";
 import { useTheme } from "./utils/theme";
@@ -59,6 +60,7 @@ export default function App() {
   const [hasKey, setHasKey] = useState(false);
   const [showHelp, setShowHelp] = useState(false),
     [helpOpen, setHelpOpen] = useState(false),
+    [authSettingsOpen, setAuthSettingsOpen] = useState(false),
     [clearDrafts, setClearDrafts] = useState(false);
   const helpRoot = useRef<HTMLDivElement>(null),
     helpTrigger = useRef<HTMLButtonElement>(null);
@@ -572,6 +574,75 @@ export default function App() {
             )}
           </section>
         </div>
+        <button
+          type="button"
+          className="btn-light auth-settings-trigger"
+          aria-label={t("Mga setting", "Settings")}
+          aria-haspopup="dialog"
+          aria-expanded={authSettingsOpen}
+          onClick={() => setAuthSettingsOpen(true)}
+        >
+          <Settings size={20} aria-hidden="true" />
+        </button>
+        {authSettingsOpen && (
+          <Dialog
+            title={t("Mga setting", "Settings")}
+            onClose={() => setAuthSettingsOpen(false)}
+          >
+            <div className="space-y-5">
+              <fieldset className="space-y-2">
+                <legend className="font-semibold">
+                  {t("Wika", "Language")}
+                </legend>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      ["tl", "Filipino"],
+                      ["en", "English"],
+                    ] as const
+                  ).map(([value, label]) => (
+                    <button
+                      key={value}
+                      className={lang === value ? "btn" : "btn-light"}
+                      type="button"
+                      lang={value === "tl" ? "fil" : "en"}
+                      aria-pressed={lang === value}
+                      onClick={() => setLang(value)}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              <fieldset className="space-y-2">
+                <legend className="font-semibold">{t("Tema", "Theme")}</legend>
+                <div className="flex flex-wrap gap-2">
+                  {(["light", "dark"] as const).map((value) => (
+                    <button
+                      key={value}
+                      className={theme === value ? "btn" : "btn-light"}
+                      type="button"
+                      aria-pressed={theme === value}
+                      onClick={() => chooseTheme(value)}
+                    >
+                      {value === "light"
+                        ? t("Maliwanag", "Light")
+                        : t("Madilim", "Dark")}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+              {!themePersisted && (
+                <p className="text-sm text-slate-600" role="status">
+                  {t(
+                    "Nailapat ang tema, ngunit hindi ito maaalala ng browser.",
+                    "Theme applied, but your browser could not save the preference.",
+                  )}
+                </p>
+              )}
+            </div>
+          </Dialog>
+        )}
       </div>
     );
   const teacher = workspace.user.role === "teacher";

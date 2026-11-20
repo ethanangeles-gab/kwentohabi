@@ -18,12 +18,18 @@ export async function api<T = any>(
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(60000),
   });
-  const data = await response.json().catch(() => {
+  const responseBody = await response.text();
+  let data: any;
+  try {
+    data = JSON.parse(responseBody);
+  } catch {
+    const contentType =
+      response.headers.get("content-type")?.split(";")[0] || "unknown content type";
     throw new ApiError(
       response.status,
-      "The server returned an unreadable response. Retry; your saved work is retained.",
+      `The server returned a non-JSON response (HTTP ${response.status}, ${contentType}). Check the deployment API routing and function logs; your saved work is retained.`,
     );
-  });
+  }
   if (!response.ok || !data || data.error || data.success === false)
     throw new ApiError(
       response.status,

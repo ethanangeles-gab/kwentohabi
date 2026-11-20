@@ -464,6 +464,18 @@ mark.hl-distress {
   background: var(--surface);
   color: var(--ink);
 }
+.auth-settings-trigger {
+  position: fixed;
+  z-index: 20;
+  left: max(1rem, env(safe-area-inset-left));
+  bottom: max(1rem, env(safe-area-inset-bottom));
+  width: 3rem;
+  height: 3rem;
+  padding: 0;
+  border: 1px solid var(--input-border);
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px rgb(0 0 0 / 0.25);
+}
 @media (max-width: 639px) {
   .auth-story {
     padding: 2rem 1.5rem 1rem;

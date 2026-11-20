@@ -57,9 +57,12 @@ import {
   registerPublicRegistration,
   registerInvitationRoutes,
 } from "./registration";
+import { persistentDatabaseMiddleware } from "./postgres";
 const app = express();
 const originOverride = canonicalOrigin(process.env.APP_ORIGIN);
-if (process.env.TRUST_PROXY) {
+if (process.env.VERCEL === "1") {
+  app.set("trust proxy", 1);
+} else if (process.env.TRUST_PROXY) {
   if (["true", "*"].includes(process.env.TRUST_PROXY))
     throw new Error(
       "TRUST_PROXY must name specific trusted addresses or networks.",
@@ -90,6 +93,7 @@ app.use((req, res, next) => {
   }
   next();
 });
+app.use(persistentDatabaseMiddleware);
 type AuthRequest = Request & { user: SessionUser };
 const route =
   (fn: (req: AuthRequest, res: Response) => any) =>
@@ -135,7 +139,15 @@ app.get("/api/health", (_req, res) =>
   }),
 );
 app.get("/api/privacy", (_req, res) => res.json(PRIVACY_NOTICE));
-const loginProtection = new LoginProtection();
+const loginProtection = new LoginProtection(
+  undefined,
+  process.env.VERCEL === "1" ||
+    Boolean(
+      process.env.DATABASE_URL ||
+        process.env.POSTGRES_URL ||
+        process.env.POSTGRES_PRISMA_URL,
+    ),
+);
 function signIn(res: Response, userId: string) {
   const token = randomBytes(32).toString("hex");
   for (const [key, s] of Object.entries(db.sessions))
@@ -152,7 +164,8 @@ function signIn(res: Response, userId: string) {
   res.cookie("kwentohabi", token, {
     httpOnly: true,
     sameSite: "strict",
-    secure: process.env.COOKIE_SECURE === "true",
+    secure:
+      process.env.COOKIE_SECURE === "true" || process.env.VERCEL === "1",
     maxAge: 8 * 3600_000,
   });
 }
@@ -1150,8 +1163,10 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 const port = Number(process.env.PORT) || 3000;
-app.listen(port, process.env.HOST || "127.0.0.1", () =>
-  console.log(
-    `KwentoHabi: http://localhost:${port} | ${ai ? "AI configured" : "limited local checks"} | ${db.users.length ? "school configured" : "first-run school setup required"}`,
-  ),
-);
+export default app;
+if (process.env.VERCEL !== "1")
+  app.listen(port, process.env.HOST || "127.0.0.1", () =>
+    console.log(
+      `KwentoHabi: http://localhost:${port} | ${ai ? "AI configured" : "limited local checks"} | ${db.users.length ? "school configured" : "first-run school setup required"}`,
+    ),
+  );

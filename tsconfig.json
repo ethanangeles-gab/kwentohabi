@@ -17,6 +17,6 @@
     },
     "noEmit": true
   },
-  "include": ["src", "server.ts", "server"],
+  "include": ["src", "server.ts", "server", "api", "scripts"],
   "exclude": ["dist", "node_modules"]
 }

@@ -6,6 +6,7 @@ import {
   timingSafeEqual,
   createHash,
 } from "node:crypto";
+import { AsyncLocalStorage } from "node:async_hooks";
 import {
   INITIAL_STORIES,
   INITIAL_RUBRICS,
@@ -84,65 +85,140 @@ export interface Database {
   consents: Record<string, ConsentRecord>;
   history: Record<string, ChapterRevision[]>;
   invitations: Record<string, InvitationRecord>;
+  rateLimits: Record<string, { count: number; until: number }>;
+}
+export interface DatabaseRequestContext {
+  database: Database;
+  dirty: boolean;
+}
+const databaseContext = new AsyncLocalStorage<DatabaseRequestContext>();
+const serverless =
+  process.env.VERCEL === "1" ||
+  Boolean(
+    process.env.DATABASE_URL ||
+      process.env.POSTGRES_URL ||
+      process.env.POSTGRES_PRISMA_URL,
+  );
+export function createInitialDatabase(): Database {
+  return {
+    schema: 1,
+    school: "",
+    users: [],
+    stories: [],
+    rubrics: structuredClone(INITIAL_RUBRICS),
+    usage: {},
+    sessions: {},
+    consents: {},
+    history: {},
+    invitations: {},
+    rateLimits: {},
+  };
+}
+export function normalizeDatabase(database: Database): Database {
+  database.consents ??= {};
+  database.history ??= {};
+  database.invitations ??= {};
+  database.rateLimits ??= {};
+  for (const story of database.stories) {
+    story.evaluations ??= {};
+    story.wikiEntries ??= [];
+    story.status ??= "active";
+    story.isDemo ??= ["story-lia", "story-makiling"].includes(story.id);
+  }
+  for (const user of database.users)
+    user.isDemo ??= Boolean(
+      AUTHORS[user.id] && user.name === AUTHORS[user.id].name,
+    );
+  return database;
+}
+export function runWithDatabase<T>(
+  database: Database,
+  action: (context: DatabaseRequestContext) => T,
+): T {
+  const context = { database: normalizeDatabase(database), dirty: false };
+  return databaseContext.run(context, () => action(context));
 }
 const filename = path.join(
   path.resolve(process.env.DATA_DIR || "data"),
   "workspace.json",
 );
-// This backend must never run two writers against an in-memory JSON snapshot.
 const lockFile = filename + ".lock";
-fs.mkdirSync(path.dirname(filename), { recursive: true });
-if (fs.existsSync(lockFile)) {
-  const owner = Number(fs.readFileSync(lockFile, "utf8"));
-  if (!Number.isSafeInteger(owner) || owner < 1)
-    throw new Error(
-      "Invalid storage lock. Stop the server and inspect workspace.json.lock before restarting.",
-    );
-  try {
-    process.kill(owner, 0);
-    throw new Error(
-      "This DATA_DIR is already in use. Run one server process or use a different directory.",
-    );
-  } catch (error: any) {
-    if (error.code !== "ESRCH") throw error;
-    fs.unlinkSync(lockFile);
-  }
-}
-fs.writeFileSync(lockFile, String(process.pid), { flag: "wx", mode: 0o600 });
-process.once("exit", () => {
-  try {
-    if (fs.readFileSync(lockFile, "utf8") === String(process.pid))
+let localDatabase = createInitialDatabase();
+if (!serverless) {
+  fs.mkdirSync(path.dirname(filename), { recursive: true });
+  if (fs.existsSync(lockFile)) {
+    const owner = Number(fs.readFileSync(lockFile, "utf8"));
+    if (!Number.isSafeInteger(owner) || owner < 1)
+      throw new Error(
+        "Invalid storage lock. Stop the server and inspect workspace.json.lock before restarting.",
+      );
+    try {
+      process.kill(owner, 0);
+      throw new Error(
+        "This DATA_DIR is already in use. Run one server process or use a different directory.",
+      );
+    } catch (error: any) {
+      if (error.code !== "ESRCH") throw error;
       fs.unlinkSync(lockFile);
-  } catch {}
-});
-export const db: Database = fs.existsSync(filename)
-  ? JSON.parse(fs.readFileSync(filename, "utf8"))
-  : {
-      schema: 1,
-      school: "",
-      users: [],
-      stories: [],
-      rubrics: structuredClone(INITIAL_RUBRICS),
-      usage: {},
-      sessions: {},
-      consents: {},
-      history: {},
-      invitations: {},
-    };
-db.consents ??= {};
-db.history ??= {};
-db.invitations ??= {};
-for (const story of db.stories) {
-  story.evaluations ??= {};
-  story.wikiEntries ??= [];
-  story.status ??= "active";
-  story.isDemo ??= ["story-lia", "story-makiling"].includes(story.id);
+    }
+  }
+  fs.writeFileSync(lockFile, String(process.pid), { flag: "wx", mode: 0o600 });
+  process.once("exit", () => {
+    try {
+      if (fs.readFileSync(lockFile, "utf8") === String(process.pid))
+        fs.unlinkSync(lockFile);
+    } catch {}
+  });
+  if (fs.existsSync(filename))
+    localDatabase = JSON.parse(fs.readFileSync(filename, "utf8"));
 }
-for (const user of db.users)
-  user.isDemo ??= Boolean(
-    AUTHORS[user.id] && user.name === AUTHORS[user.id].name,
-  );
+normalizeDatabase(localDatabase);
+export const db: Database = new Proxy(localDatabase, {
+  get(_target, property) {
+    return Reflect.get(databaseContext.getStore()?.database || localDatabase, property);
+  },
+  set(_target, property, value) {
+    return Reflect.set(
+      databaseContext.getStore()?.database || localDatabase,
+      property,
+      value,
+    );
+  },
+  deleteProperty(_target, property) {
+    return Reflect.deleteProperty(
+      databaseContext.getStore()?.database || localDatabase,
+      property,
+    );
+  },
+  ownKeys() {
+    return Reflect.ownKeys(
+      databaseContext.getStore()?.database || localDatabase,
+    );
+  },
+  getOwnPropertyDescriptor(_target, property) {
+    const descriptor = Reflect.getOwnPropertyDescriptor(
+      databaseContext.getStore()?.database || localDatabase,
+      property,
+    );
+    return descriptor ? { ...descriptor, configurable: true } : undefined;
+  },
+  has(_target, property) {
+    return Reflect.has(
+      databaseContext.getStore()?.database || localDatabase,
+      property,
+    );
+  },
+});
 export function persist() {
+  const context = databaseContext.getStore();
+  if (context) {
+    context.dirty = true;
+    return;
+  }
+  if (serverless)
+    throw new Error(
+      "A request-scoped persistent database is required for serverless storage.",
+    );
   fs.mkdirSync(path.dirname(filename), { recursive: true });
   const temp = filename + ".tmp",
     fd = fs.openSync(temp, "w", 0o600);
