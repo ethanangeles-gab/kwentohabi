@@ -6,7 +6,7 @@ import React from "react";
  * notebook, scroll, ABC block, speech bubble, magnifier, caped hero, hero mask,
  * lightning shield, comic burst, castle, crown, treasure map, moon, cloud,
  * idea bulb, paper plane, rocket, magic wand, needle-and-thread for "habi", a
- * little maya bird, hearts, stars and sparkles).
+ * little maya bird, hearts, and five-point stars).
  *
  * It is purely decorative: aria-hidden, pointer-events off, and painted
  * BEHIND every card (z-index -1 inside the isolated .app-shell), so it shows
@@ -93,12 +93,6 @@ const ART = {
       <path d="M36 15L24 34h8l-4 15 14-21h-8l4-13z" className="sd-fill" />
       <path d="M36 15L24 34h8l-4 15 14-21h-8l4-13z" />
     </>
-  ),
-  sparkle: (
-    <path
-      d="M32 6c2 17 9 24 26 26-17 2-24 9-26 26-2-17-9-24-26-26 17-2 24-9 26-26z"
-      className="sd-solid"
-    />
   ),
   bulb: (
     <>
@@ -246,10 +240,8 @@ const ART = {
 
 const DOODLES: Doodle[] = [
   // top band (mostly behind the translucent header)
-  { art: "sparkle", x: 8, y: 5, size: 1.6, tone: "gold" },
   { art: "crown", x: 26, y: 8, size: 3.75, rotate: -12, tone: "gold", wide: true },
   { art: "cloud", x: 40, y: 3, size: 4.5, tone: "ink", wide: true },
-  { art: "sparkle", x: 46, y: 14, size: 1.3, tone: "red", wide: true },
   { art: "burst", x: 58, y: 8, size: 3.75, rotate: 10, tone: "gold", wide: true },
   { art: "heart", x: 72, y: 5, size: 2.75, rotate: -10, tone: "red", wide: true, float: true },
   { art: "book", x: 86, y: 10, size: 5.25, rotate: -8, tone: "ink" },
@@ -258,7 +250,6 @@ const DOODLES: Doodle[] = [
   { art: "abc", x: 16, y: 22, size: 3.5, rotate: 8, tone: "orange", wide: true },
   { art: "mask", x: 36, y: 22, size: 4.75, rotate: -6, tone: "red", wide: true },
   { art: "moon", x: 50, y: 20, size: 3.75, tone: "gold", wide: true },
-  { art: "sparkle", x: 69, y: 24, size: 1.6, tone: "gold", float: true },
   { art: "star", x: 78, y: 22, size: 2.5, rotate: -8, tone: "gold" },
   { art: "scroll", x: 93, y: 26, size: 4, rotate: 10, tone: "ink" },
   // middle
@@ -267,9 +258,7 @@ const DOODLES: Doodle[] = [
   { art: "squiggle", x: 52, y: 38, size: 3.25, rotate: -14, tone: "gold", wide: true },
   { art: "hero", x: 62, y: 31, size: 4.75, tone: "red", wide: true, float: true },
   { art: "bubble", x: 78, y: 43, size: 4.5, rotate: 6, tone: "ink", wide: true, float: true },
-  { art: "sparkle", x: 93, y: 38, size: 1.6, tone: "gold" },
   { art: "inkpot", x: 3, y: 46, size: 4, rotate: -6, tone: "ink" },
-  { art: "sparkle", x: 19, y: 48, size: 1.8, tone: "gold" },
   { art: "notebook", x: 34, y: 54, size: 4, rotate: 8, tone: "ink", wide: true },
   { art: "map", x: 48, y: 50, size: 4.5, rotate: -4, tone: "orange", wide: true },
   { art: "star", x: 66, y: 48, size: 2, rotate: 10, tone: "orange", wide: true },
@@ -277,7 +266,6 @@ const DOODLES: Doodle[] = [
   // lower middle
   { art: "quill", x: 6, y: 60, size: 4.75, rotate: 8, tone: "red" },
   { art: "castle", x: 20, y: 62, size: 5, tone: "ink", wide: true },
-  { art: "sparkle", x: 40, y: 66, size: 1.4, tone: "orange", wide: true },
   { art: "plane", x: 62, y: 60, size: 5, rotate: -6, tone: "ink", wide: true, float: true },
   { art: "shield", x: 89, y: 64, size: 4.75, rotate: 8, tone: "orange", float: true },
   { art: "books", x: 3, y: 74, size: 4.25, tone: "orange" },
@@ -289,9 +277,7 @@ const DOODLES: Doodle[] = [
   { art: "wand", x: 4, y: 88, size: 4, tone: "orange" },
   { art: "star", x: 16, y: 92, size: 2.25, tone: "gold" },
   { art: "mask", x: 36, y: 88, size: 3.5, rotate: 8, tone: "orange", wide: true },
-  { art: "sparkle", x: 56, y: 88, size: 2, tone: "orange" },
   { art: "rocket", x: 80, y: 86, size: 4.25, rotate: 20, tone: "red" },
-  { art: "sparkle", x: 94, y: 92, size: 1.4, tone: "gold" },
 ];
 
 export function StoryDoodles() {
