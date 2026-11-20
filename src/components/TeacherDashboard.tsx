@@ -4,6 +4,7 @@ import { ClassRoster } from "./AccountControls";
 import type { SessionUser, StoryWorkspace } from "../types";
 import { extractStoryTimeline } from "../utils/timelineAnalysis";
 import { analyzeChapterSentiment } from "../utils/sentimentAnalysis";
+import { Mayakda } from "./Mayakda";
 type Props = {
   story: StoryWorkspace;
   users: SessionUser[];
@@ -67,13 +68,16 @@ export function TeacherDashboard({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-3 justify-between items-center">
-        <div>
+        <div className="flex items-center gap-3">
+          <Mayakda size={58} pose="quiet" className="teacher-mayakda" />
+          <div>
           <p className="eyebrow">
             {t("Guro ang gumagabay", "Teacher-led review")}
           </p>
           <h3 className="font-serif text-xl font-bold">
             {t("Mga kailangang aksyunan", "Your review queue")}
           </h3>
+          </div>
         </div>
         <div className="flex flex-wrap gap-2">
           <a

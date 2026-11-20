@@ -15,6 +15,7 @@ import {
   type WritingDraft,
 } from "../utils/writingDrafts";
 import { Dialog } from "./Dialog";
+import { Mayakda } from "./Mayakda";
 
 type Props = {
   story: StoryWorkspace;
@@ -182,12 +183,20 @@ export function StudentCanvas({
           </span>
         </div>
         {story.chapters.length === 0 && (
-          <p className="card text-slate-500">
-            {t(
-              "Wala pang kabanata. Simulan ang iyong kuwento.",
-              "No chapters yet. Start your story.",
-            )}
-          </p>
+          <div className="mayakda-empty-state card">
+            <Mayakda size={112} pose="notice" />
+            <div>
+              <p className="font-serif text-lg font-bold">
+                {t("Wala pang kabanata", "No chapters yet")}
+              </p>
+              <p className="text-sm text-slate-600">
+                {t(
+                  "Simulan natin ang unang talata.",
+                  "Let's weave the opening paragraph.",
+                )}
+              </p>
+            </div>
+          </div>
         )}
         {!focusMode &&
           story.chapters.map((ch) => (
@@ -485,9 +494,17 @@ export function StudentCanvas({
         className={`space-y-4 min-w-0 xl:sticky xl:top-4 ${focusMode ? "hidden" : ""}`}
       >
         <div className="card continuity-review space-y-3">
-          <h3 className="font-bold text-lg">
-            {t("Pagsusuri ng continuity", "Continuity review")}
-          </h3>
+          <div className="flex items-center gap-3">
+            {checking && <Mayakda size={64} pose="notice" />}
+            <h3 className="font-bold text-lg">
+              {t("Pagsusuri ng continuity", "Continuity review")}
+            </h3>
+          </div>
+          {checking && (
+            <p className="text-sm text-amber-200" role="status">
+              {t("May napansin ako—inaayos ang mga hibla…", "Mayakda is following the story threads…")}
+            </p>
+          )}
           <p className="text-sm review-hint">
             {story.checkMethod === "gemini"
               ? t("Huling pagsusuri: AI", "Last check: AI")
