@@ -251,34 +251,54 @@ export default function App() {
   if (!workspace)
     return (
       <div className="min-h-screen auth-shell p-4 sm:p-10">
-        <div className="max-w-md mx-auto card space-y-5">
-          <div className="habi-thread-bar rounded" />
-          <h1 className="text-3xl font-bold font-serif">KwentoHabi</h1>
-          <p className="eyebrow">
-            {needsSetup
-              ? t(
-                  "Para sa administrador ng paaralan",
-                  "For school administrators",
-                )
-              : t("Para sa iyong klase", "For your classroom")}
-          </p>
-          <p className="text-sm text-slate-600">
-            {t(
-              "Ikaw ang sumusulat. Guro ang gumagabay. Tinutulungan ka ng ebidensya na maghabi ng malinaw na kuwento.",
-              "Students write. Teachers guide. Evidence helps every story hold together.",
-            )}
-          </p>
-          <p>
-            {needsSetup
-              ? t(
-                  "Ihanda ang pribadong workspace ng paaralan.",
-                  "Set up your private school workspace.",
-                )
-              : t(
-                  "Mag-sign in sa account ng iyong klase.",
-                  "Sign in to your classroom account.",
-                )}
-          </p>
+        <div className="auth-card">
+          <aside className="auth-brand">
+            <div className="auth-thread" aria-hidden="true" />
+            <img
+              src="/assets/kwentohabi-logo.png"
+              alt="KwentoHabi"
+              className="auth-logo"
+            />
+            <p className="eyebrow">
+              KwentoHabi · {t("Pagsusulat sa silid-aralan", "Classroom writing")}
+            </p>
+            <h1 className="font-serif">
+              {t("Ang kuwento ay hinabi nang sama-sama.", "Stories are woven together.")}
+            </h1>
+            <p>
+              {t(
+                "Lugar ng paaralan para sa pagsusulat, gabay ng guro, at malikhaing rebisyon.",
+                "A school workspace for writing, teacher guidance, and thoughtful revision.",
+              )}
+            </p>
+            <div className="auth-promises">
+              <span>{t("Feedback na may ebidensiya", "Evidence-linked feedback")}</span>
+              <span>{t("Sinusuri ng guro", "Teacher reviewed")}</span>
+            </div>
+          </aside>
+          <div className="auth-form-panel">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="eyebrow">
+                  {needsSetup
+                    ? t("Unang pag-setup", "School setup")
+                    : t("Account ng klase", "Classroom account")}
+                </p>
+                <h2 className="font-serif text-2xl font-bold mt-1">
+                  {needsSetup
+                    ? t("Ihanda ang espasyo ng paaralan", "Create a school workspace")
+                    : t("Maligayang pagbabalik", "Welcome back")}
+                </h2>
+              </div>
+              <button
+                type="button"
+                className="btn-light shrink-0"
+                aria-label={lang === "tl" ? "Switch to English" : "Lumipat sa Filipino"}
+                onClick={() => setLang(lang === "tl" ? "en" : "tl")}
+              >
+                {lang === "tl" ? "English" : "Filipino"}
+              </button>
+            </div>
           <form
             className="space-y-4"
             onSubmit={async (e) => {
@@ -350,25 +370,20 @@ export default function App() {
               {error}
             </p>
           )}
-          <button
-            className="btn-light"
-            onClick={() => setLang(lang === "tl" ? "en" : "tl")}
-          >
-            {lang === "tl" ? "English" : "Filipino"}
-          </button>
-          <PrivacyNotice lang={lang} compact />
+            <PrivacyNotice lang={lang} compact />
+          </div>
         </div>
       </div>
     );
   const teacher = workspace.user.role === "teacher";
   const tabs: [Tab, string][] = [
-    ["hub", t("Silid-aralan", "Classroom")],
-    ["canvas", t("Pagsusulat", "Writing canvas")],
-    ["wiki", t("Wiki ng kuwento", "Story wiki")],
+    ["hub", t("Silid-aralan", "Home")],
+    ["canvas", t("Magsulat", "Write")],
+    ["wiki", t("Wiki", "Story wiki")],
     ...(teacher
-      ? [["teacher", t("Gabay ng guro", "Teacher review")] as [Tab, string]]
+      ? [["teacher", t("Pagrepaso", "Review")] as [Tab, string]]
       : []),
-    ["archive", t("Mga materyales", "Materials")],
+    ["archive", t("Sanggunian", "Resources")],
   ];
   return (
     <div className="min-h-screen app-shell pb-12">
@@ -377,7 +392,15 @@ export default function App() {
         <div className="workspace-width py-4 space-y-4">
           <div className="flex flex-wrap justify-between items-center gap-3">
             <div>
-              <h1 className="font-serif text-2xl font-bold">KwentoHabi</h1>
+              <div className="flex items-center gap-2">
+                <img
+                  src="/assets/kwentohabi-logo.png"
+                  alt=""
+                  className="header-logo"
+                  aria-hidden="true"
+                />
+                <h1 className="font-serif text-2xl font-bold">KwentoHabi</h1>
+              </div>
               <p className="text-xs text-slate-500">
                 {workspace.school} · {workspace.user.name} ·{" "}
                 {teacher ? t("Guro", "Teacher") : t("Mag-aaral", "Student")}
@@ -686,6 +709,27 @@ export default function App() {
           </Suspense>
         )}
       </main>
+      <nav className="mobile-action-dock" aria-label={t("Mabilis na nabigasyon", "Quick navigation")}>
+        {([
+          ["hub", t("Silid-aralan", "Home"), House],
+          ["canvas", t("Magsulat", "Write"), PencilLine],
+          ["wiki", t("Wiki", "Wiki"), BookOpen],
+          ...(teacher
+            ? [["teacher", t("Pagrepaso", "Review"), ClipboardCheck] as [Tab, string, typeof ClipboardCheck]]
+            : []),
+        ] as [Tab, string, typeof House][]).map(([id, label, Icon]) => (
+          <button
+            key={id}
+            type="button"
+            className={tab === id ? "active" : ""}
+            aria-current={tab === id ? "page" : undefined}
+            onClick={() => setTab(id)}
+          >
+            <Icon size={19} />
+            <span>{label}</span>
+          </button>
+        ))}
+      </nav>
       {showHelp && (
         <Dialog
           title={t("Gabay sa paggamit", "How to use KwentoHabi")}
